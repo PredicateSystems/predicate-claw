@@ -1,0 +1,19 @@
+# Dockerfile.test
+FROM node:20-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m agentuser
+WORKDIR /home/agentuser/app
+
+COPY . .
+RUN if [ -f package.json ]; then npm install; fi
+
+RUN python3 -m pip install --break-system-packages -e .
+
+USER agentuser
+CMD ["npm", "start"]

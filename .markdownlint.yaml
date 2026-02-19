@@ -1,0 +1,5 @@
+default: false
+
+# Keep this lightweight and non-disruptive for design-heavy docs.
+# Enable only the most universal, low-noise rule.
+MD010: true

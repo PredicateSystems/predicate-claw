@@ -1,0 +1,17 @@
+version: 1
+rules:
+  - id: allow_workspace_reads
+    effect: allow
+    action: fs.read
+    resource: ./workspace/*
+  - id: deny_sensitive_paths
+    effect: deny
+    action: fs.read
+    resource:
+      - ~/.ssh/*
+      - /etc/*
+  - id: deny_untrusted_shell
+    effect: deny
+    action: shell.execute
+    when:
+      source: untrusted_dm

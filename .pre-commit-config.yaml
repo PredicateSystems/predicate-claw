@@ -1,0 +1,100 @@
+# Pre-commit hooks for openclaw-predicate-provider
+# Baseline adapted from AgentIdentity/.pre-commit-config.yaml
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: debug-statements
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/psf/black
+    rev: 24.2.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: ["--line-length=100"]
+        exclude: ^(venv/|\.venv/|build/|dist/)
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile=black", "--line-length=100"]
+        exclude: ^(venv/|\.venv/|build/|dist/)
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args:
+          - "--max-line-length=100"
+          - "--extend-ignore=E203,W503,E501"
+          - "--exclude=venv,build,dist,.eggs,*.egg"
+          - "--max-complexity=15"
+        exclude: ^(venv/|\.venv/|build/|dist/)
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.0
+          - httpx>=0.27.0
+        args:
+          - "--ignore-missing-imports"
+          - "--no-strict-optional"
+          - "--warn-unused-ignores"
+        exclude: ^(tests/|examples/|venv/|\.venv/|build/|dist/)
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.7
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+        exclude: ^(tests/|venv/|\.venv/)
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.15.0
+    hooks:
+      - id: pyupgrade
+        args: ["--py311-plus"]
+        exclude: ^(venv/|\.venv/|build/|dist/)
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.14.0
+    hooks:
+      - id: markdownlint-cli2
+        args: ["--config", ".markdownlint.yaml"]
+        files: \.md$
+
+default_language_version:
+  python: python3.11
+
+fail_fast: false
+
+exclude: |
+  (?x)^(
+      venv/.*|
+      \.venv/.*|
+      build/.*|
+      dist/.*|
+      \.eggs/.*|
+      .*\.egg-info/.*|
+      __pycache__/.*|
+      \.pytest_cache/.*|
+      \.mypy_cache/.*|
+      \.ruff_cache/.*|
+      \.pre-commit-cache/.*
+  )$
