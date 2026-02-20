@@ -61,6 +61,7 @@ pytest
 - `OpenClawHooks`
 - `OpenClawRuntimeIntegrator`
 - `GuardedProvider`
+- `registerOpenClawPredicateTools` (OpenClaw `api.registerTool(...)` adapter)
 
 ## Publishing target
 
