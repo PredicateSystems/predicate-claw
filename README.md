@@ -1,7 +1,7 @@
 # openclaw-predicate-provider
 
 OpenClaw security provider that enforces deterministic, pre-execution
-authorization using Predicate Authority.
+authorization using [Predicate Authority](https://github.com/PredicateSystems/predicate-authority-ts).
 
 ## Status
 

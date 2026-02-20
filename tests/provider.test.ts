@@ -190,4 +190,38 @@ describe("GuardedProvider", () => {
       }),
     ).resolves.toBe("mnd_456");
   });
+
+  it("preserves deny reason and redacts sensitive resource in audit export", async () => {
+    const exported: Array<Record<string, unknown>> = [];
+    const provider = new GuardedProvider({
+      principal: "agent:openclaw-local",
+      auditExporter: {
+        exportDecision: async (event) => {
+          exported.push(event as unknown as Record<string, unknown>);
+        },
+      },
+      authorityClient: {
+        authorize: async () => ({
+          allow: false,
+          reason: "deny_sensitive_read_from_untrusted_context",
+        }),
+      },
+    });
+
+    await expect(
+      provider.guardOrThrow({
+        action: "fs.read",
+        resource: "/Users/demo/.ssh/id_rsa",
+        args: { path: "/Users/demo/.ssh/id_rsa" },
+        context: { source: "untrusted_dm" },
+      }),
+    ).rejects.toBeInstanceOf(ActionDeniedError);
+
+    expect(exported).toHaveLength(1);
+    expect(exported[0]).toMatchObject({
+      outcome: "deny",
+      reason: "deny_sensitive_read_from_untrusted_context",
+      resource: "[REDACTED]",
+    });
+  });
 });

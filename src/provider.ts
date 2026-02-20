@@ -81,7 +81,7 @@ export class GuardedProvider {
         await this.emitDecisionEvent({
           principal: this.principal,
           action: request.action,
-          resource: request.resource,
+          resource: redactResource(request.action, request.resource),
           outcome: "allow",
           reason: decision.reason,
           mandateId: decision.mandateId,
@@ -93,7 +93,7 @@ export class GuardedProvider {
       await this.emitDecisionEvent({
         principal: this.principal,
         action: request.action,
-        resource: request.resource,
+        resource: redactResource(request.action, request.resource),
         outcome: "deny",
         reason: decision.reason ?? "denied_by_policy",
         mandateId: decision.mandateId,
@@ -109,7 +109,7 @@ export class GuardedProvider {
         await this.emitDecisionEvent({
           principal: this.principal,
           action: request.action,
-          resource: request.resource,
+          resource: redactResource(request.action, request.resource),
           outcome: "error",
           reason: error.message,
           ...contextFields(request.context),
@@ -120,7 +120,7 @@ export class GuardedProvider {
       await this.emitDecisionEvent({
         principal: this.principal,
         action: request.action,
-        resource: request.resource,
+        resource: redactResource(request.action, request.resource),
         outcome: "error",
         reason: "Predicate sidecar unavailable",
         ...contextFields(request.context),
@@ -185,6 +185,21 @@ function contextFields(
       typeof context?.trace_id === "string" ? context.trace_id : undefined,
     source: typeof context?.source === "string" ? context.source : undefined,
   };
+}
+
+function redactResource(action: string, resource: string): string {
+  if (action === "fs.read" || action === "fs.write") {
+    const lowered = resource.toLowerCase();
+    if (
+      lowered.includes("/.ssh/") ||
+      lowered.includes("/etc/") ||
+      lowered.includes("id_rsa") ||
+      lowered.includes("credentials")
+    ) {
+      return "[REDACTED]";
+    }
+  }
+  return resource;
 }
 
 function stableJson(value: unknown): string {

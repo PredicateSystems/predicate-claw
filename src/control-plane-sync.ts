@@ -16,6 +16,22 @@ export interface RevocationSyncSnapshot {
   revoked: unknown[];
 }
 
+export interface ControlPlaneSyncStatus {
+  policyVersion: string;
+  revocationVersion: string;
+  pinnedPolicyVersion?: string;
+  policyVersionMismatch: boolean;
+  stale: boolean;
+  syncAgeMs: number;
+  lastSyncedAtMs: number;
+}
+
+export interface ControlPlaneSyncStatusTrackerOptions {
+  pinnedPolicyVersion?: string;
+  staleAfterMs?: number;
+  onStatus?: (status: ControlPlaneSyncStatus) => void;
+}
+
 export class ControlPlaneSyncClient {
   private readonly baseUrl: string;
   private readonly tenantId: string;
@@ -65,6 +81,66 @@ export class ControlPlaneSyncClient {
     } finally {
       clearTimeout(timer);
     }
+  }
+}
+
+export class ControlPlaneSyncStatusTracker {
+  private readonly pinnedPolicyVersion?: string;
+  private readonly staleAfterMs: number;
+  private readonly onStatus?: (status: ControlPlaneSyncStatus) => void;
+  private latest?: {
+    policyVersion: string;
+    revocationVersion: string;
+    lastSyncedAtMs: number;
+  };
+
+  constructor(options?: ControlPlaneSyncStatusTrackerOptions) {
+    this.pinnedPolicyVersion = options?.pinnedPolicyVersion;
+    this.staleAfterMs = options?.staleAfterMs ?? 300000;
+    this.onStatus = options?.onStatus;
+  }
+
+  recordSync(
+    snapshot: { policy: PolicySyncSnapshot; revocations: RevocationSyncSnapshot },
+    nowMs: number = Date.now(),
+  ): ControlPlaneSyncStatus {
+    this.latest = {
+      policyVersion: snapshot.policy.version,
+      revocationVersion: snapshot.revocations.version,
+      lastSyncedAtMs: nowMs,
+    };
+    const status = this.snapshot(nowMs);
+    this.onStatus?.(status);
+    return status;
+  }
+
+  snapshot(nowMs: number = Date.now()): ControlPlaneSyncStatus {
+    if (!this.latest) {
+      return {
+        policyVersion: "unknown",
+        revocationVersion: "unknown",
+        pinnedPolicyVersion: this.pinnedPolicyVersion,
+        policyVersionMismatch: false,
+        stale: true,
+        syncAgeMs: Number.POSITIVE_INFINITY,
+        lastSyncedAtMs: 0,
+      };
+    }
+    const syncAgeMs = Math.max(0, nowMs - this.latest.lastSyncedAtMs);
+    const policyVersionMismatch =
+      typeof this.pinnedPolicyVersion === "string" &&
+      this.pinnedPolicyVersion.length > 0
+        ? this.latest.policyVersion !== this.pinnedPolicyVersion
+        : false;
+    return {
+      policyVersion: this.latest.policyVersion,
+      revocationVersion: this.latest.revocationVersion,
+      pinnedPolicyVersion: this.pinnedPolicyVersion,
+      policyVersionMismatch,
+      stale: syncAgeMs > this.staleAfterMs,
+      syncAgeMs,
+      lastSyncedAtMs: this.latest.lastSyncedAtMs,
+    };
   }
 }
 
