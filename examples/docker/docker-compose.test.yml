@@ -1,0 +1,16 @@
+services:
+  provider-demo:
+    build:
+      context: ../..
+      dockerfile: examples/docker/Dockerfile.test
+    environment:
+      NODE_ENV: test
+    command: ["npm", "run", "test:demo"]
+
+  provider-ci:
+    build:
+      context: ../..
+      dockerfile: examples/docker/Dockerfile.test
+    environment:
+      NODE_ENV: test
+    command: ["npm", "run", "test:ci"]

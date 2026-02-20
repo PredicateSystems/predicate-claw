@@ -35,7 +35,7 @@ Current repo state:
   - TypeScript tests (`*.test.ts`)
   - legacy Python tests (`test_*.py`)
 - `examples/docker/`
-  - Docker harness for adversarial testing
+  - TypeScript Docker harness for adversarial testing
 
 ## Local development (TypeScript)
 

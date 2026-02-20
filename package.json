@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:demo": "vitest run tests/hack-vs-fix-demo.test.ts"
+    "test:demo": "vitest run tests/hack-vs-fix-demo.test.ts",
+    "test:ci": "npm run typecheck && npm test"
   },
   "keywords": [],
   "author": "",

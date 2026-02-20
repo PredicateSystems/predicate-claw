@@ -1,24 +1,48 @@
 # Docker Adversarial Test Harness
 
-Use this container setup for prompt-injection and unsafe tool-call tests.
+Use this TypeScript-first container setup for isolated provider demo/testing.
 
-## Build
+## Option 1: Run with Docker Compose (recommended)
 
-```bash
-docker build -t safe-claw -f examples/docker/Dockerfile.test .
-```
-
-## Run
+From `openclaw-predicate-provider/`:
 
 ```bash
-docker run --rm -it --network=host safe-claw
+docker compose -f examples/docker/docker-compose.test.yml run --rm provider-demo
 ```
 
-`--network=host` allows the containerized OpenClaw runtime to call a local
-`predicate-authorityd` sidecar on the host.
+This runs the reproducible Hack-vs-Fix demo test (`npm run test:demo`) in an
+isolated container.
+
+Run full CI-equivalent checks in container:
+
+```bash
+docker compose -f examples/docker/docker-compose.test.yml run --rm provider-ci
+```
+
+This runs `npm run test:ci` (`typecheck` + full test suite).
+
+## Option 2: Build and run image directly
+
+Build:
+
+```bash
+docker build -t openclaw-provider-test -f examples/docker/Dockerfile.test .
+```
+
+Run demo test:
+
+```bash
+docker run --rm -it openclaw-provider-test npm run test:demo
+```
+
+Run full checks:
+
+```bash
+docker run --rm -it openclaw-provider-test npm run test:ci
+```
 
 ## Expected behavior
 
-- Allowed actions proceed with mandate telemetry.
-- Denied actions raise a provider guard error with redacted reason.
-- Sidecar failures should fail closed for high-risk tools.
+- Demo test reproduces "Hack vs Fix" flow and passes.
+- Denied actions surface stable reason codes.
+- Sensitive resource values are redacted in audit export telemetry.
