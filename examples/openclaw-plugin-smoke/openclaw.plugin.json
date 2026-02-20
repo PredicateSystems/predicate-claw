@@ -1,0 +1,11 @@
+{
+  "id": "openclaw-predicate-provider-smoke-plugin",
+  "name": "Predicate Smoke Plugin",
+  "description": "Local smoke plugin that registers Predicate-guarded OpenClaw tools.",
+  "version": "0.0.1",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

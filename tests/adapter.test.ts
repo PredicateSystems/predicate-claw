@@ -37,4 +37,40 @@ describe("ToolAdapter", () => {
       }),
     ).rejects.toBeInstanceOf(ActionDeniedError);
   });
+
+  it("maps fs.readFile to fs.read", async () => {
+    const seen: Array<{ action: string; resource: string }> = [];
+    const adapter = new ToolAdapter({
+      guardOrThrow: async ({ action, resource }) => {
+        seen.push({ action, resource });
+        return "mnd_test";
+      },
+    });
+
+    await adapter.readFile({
+      args: { path: "/tmp/demo.txt" },
+      context: { source: "trusted_ui" },
+      execute: async (args) => args,
+    });
+
+    expect(seen).toEqual([{ action: "fs.read", resource: "/tmp/demo.txt" }]);
+  });
+
+  it("maps http.request to net.http", async () => {
+    const seen: Array<{ action: string; resource: string }> = [];
+    const adapter = new ToolAdapter({
+      guardOrThrow: async ({ action, resource }) => {
+        seen.push({ action, resource });
+        return "mnd_test";
+      },
+    });
+
+    await adapter.httpRequest({
+      args: { url: "https://example.com" },
+      context: { source: "trusted_ui" },
+      execute: async (args) => args,
+    });
+
+    expect(seen).toEqual([{ action: "net.http", resource: "https://example.com" }]);
+  });
 });

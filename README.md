@@ -1,7 +1,7 @@
 # openclaw-predicate-provider
 
 OpenClaw security provider that enforces deterministic, pre-execution
-authorization using Predicate Authority.
+authorization using [Predicate Authority](https://github.com/PredicateSystems/predicate-authority-ts).
 
 ## Status
 
@@ -35,7 +35,7 @@ Current repo state:
   - TypeScript tests (`*.test.ts`)
   - legacy Python tests (`test_*.py`)
 - `examples/docker/`
-  - Docker harness for adversarial testing
+  - TypeScript Docker harness for adversarial testing
 
 ## Local development (TypeScript)
 
@@ -61,6 +61,7 @@ pytest
 - `OpenClawHooks`
 - `OpenClawRuntimeIntegrator`
 - `GuardedProvider`
+- `registerOpenClawPredicateTools` (OpenClaw `api.registerTool(...)` adapter)
 
 ## Publishing target
 
