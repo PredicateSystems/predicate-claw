@@ -1,0 +1,24 @@
+{
+  "name": "openclaw-predicate-provider",
+  "version": "0.1.0",
+  "description": "TypeScript OpenClaw security provider with Predicate Authority pre-execution checks.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "(MIT OR Apache-2.0)",
+  "type": "module",
+  "dependencies": {
+    "@predicatesystems/authority": "^0.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

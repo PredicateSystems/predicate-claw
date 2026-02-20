@@ -44,6 +44,8 @@ nosetests.xml
 .tox/
 .nox/
 .pre-commit-cache/
+node_modules/
+npm-debug.log*
 
 # Environment/secrets
 .env
