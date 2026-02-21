@@ -4,6 +4,7 @@ export * from "./config.js";
 export * from "./control-plane-sync.js";
 export * from "./errors.js";
 export * from "./non-web-evidence.js";
+export * from "./web-evidence.js";
 export * from "./openclaw-hooks.js";
 export * from "./openclaw-plugin-api.js";
 export * from "./provider.js";
