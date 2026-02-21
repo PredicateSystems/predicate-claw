@@ -70,14 +70,11 @@ Predicate Authority intercepts every tool call and authorizes it **before execut
 This SDK requires the Predicate Authority sidecar to evaluate policies locally.
 
 ```bash
-# macOS (Homebrew)
-brew install predicatesystems/tap/predicate-authorityd
+# Install via pip (requires Python 3.11+)
+pip install predicate-authority
 
-# Or via install script
-curl -sSL https://predicate.systems/install.sh | bash
-
-# Or Docker
-docker run -d -p 8787:8787 predicatesystems/authorityd:latest
+# Start the sidecar
+predicate-authorityd --port 8787
 ```
 
 ### 1. Install
