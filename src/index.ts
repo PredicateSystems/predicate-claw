@@ -1,5 +1,6 @@
 export * from "./adapter.js";
 export * from "./authority-client.js";
+export * from "./circuit-breaker.js";
 export * from "./config.js";
 export * from "./control-plane-sync.js";
 export * from "./errors.js";
