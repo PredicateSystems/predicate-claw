@@ -1,4 +1,4 @@
-# openclaw-predicate-provider
+# predicate-claw
 
 > **Stop prompt injection before it executes.**
 
@@ -17,8 +17,8 @@ Policy: DENY (sensitive_path + untrusted_source)
 Result: ActionDeniedError — SSH key never read
 ```
 
-[![npm version](https://img.shields.io/npm/v/openclaw-predicate-provider.svg)](https://www.npmjs.com/package/openclaw-predicate-provider)
-[![CI](https://github.com/PredicateSystems/openclaw-predicate-provider/actions/workflows/tests.yml/badge.svg)](https://github.com/PredicateSystems/openclaw-predicate-provider/actions)
+[![npm version](https://img.shields.io/npm/v/predicate-claw.svg)](https://www.npmjs.com/package/predicate-claw)
+[![CI](https://github.com/PredicateSystems/predicate-claw/actions/workflows/tests.yml/badge.svg)](https://github.com/PredicateSystems/predicate-claw/actions)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
 
 ---
@@ -45,6 +45,8 @@ a document, or a webpage can hijack your agent.
 
 Predicate Authority intercepts every tool call and authorizes it **before execution**.
 
+*Identity providers give your agent a passport. Predicate gives it a work visa.* We don't just know who the agent is; we cryptographically verify exactly what it is allowed to do, right when it tries to do it.
+
 | Without Protection | With Predicate Authority |
 |-------------------|-------------------------|
 | Agent reads ~/.ssh/id_rsa | **BLOCKED** - sensitive path |
@@ -57,21 +59,37 @@ Predicate Authority intercepts every tool call and authorizes it **before execut
 - 🔒 **Deterministic** — No probabilistic filtering, reproducible decisions
 - 🚫 **Fail-closed** — Errors block execution, never allow
 - 📋 **Auditable** — Every decision logged with full context
+- 🛡️ **Zero-egress** — Sidecar runs locally; no data leaves your infrastructure
 
 ---
 
 ## Quick Start
 
+### 0. Prerequisites
+
+This SDK requires the Predicate Authority sidecar to evaluate policies locally.
+
+```bash
+# macOS (Homebrew)
+brew install predicatesystems/tap/predicate-authorityd
+
+# Or via install script
+curl -sSL https://predicate.systems/install.sh | bash
+
+# Or Docker
+docker run -d -p 8787:8787 predicatesystems/authorityd:latest
+```
+
 ### 1. Install
 
 ```bash
-npm install openclaw-predicate-provider
+npm install predicate-claw
 ```
 
 ### 2. Protect your agent
 
 ```typescript
-import { GuardedProvider } from "openclaw-predicate-provider";
+import { GuardedProvider } from "predicate-claw";
 
 const provider = new GuardedProvider({
   principal: "agent:my-agent",
@@ -92,8 +110,8 @@ const content = await fs.readFile(path);  // Only runs if authorized
 ### 3. See it in action
 
 ```bash
-git clone https://github.com/PredicateSystems/openclaw-predicate-provider
-cd openclaw-predicate-provider
+git clone https://github.com/PredicateSystems/predicate-claw
+cd predicate-claw
 npm install
 npm run test:demo
 ```
@@ -386,5 +404,5 @@ MIT OR Apache-2.0
 
 <p align="center">
   <strong>Don't let prompt injection own your agent.</strong><br>
-  <code>npm install openclaw-predicate-provider</code>
+  <code>npm install predicate-claw</code>
 </p>

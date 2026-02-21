@@ -112,6 +112,56 @@ sidecar runs.
 3. Show deny result and user-facing blocked message.
 4. Show test command and green output as reproducible evidence.
 
+## Non-Web Evidence Provider Demo
+
+Demonstrates terminal and desktop accessibility evidence providers with canonical
+hashing for reproducible `state_hash` computation.
+
+### Run the Demo
+
+```bash
+npx tsx examples/non-web-evidence-demo.ts
+```
+
+### What It Shows
+
+1. **Terminal Evidence** - Captures command-line state with:
+   - Path normalization (`/workspace/./src/../src` → `/workspace/src`)
+   - Whitespace collapsing (`git   status` → `git status`)
+   - ANSI code stripping (removes color codes)
+   - Timestamp normalization (`[12:34:56]` → `[TIMESTAMP]`)
+   - Secret redaction (environment variables like `AWS_SECRET_KEY`)
+
+2. **Desktop Evidence** - Captures accessibility tree state with:
+   - App name normalization
+   - UI tree text normalization
+   - Whitespace handling
+
+3. **Hash Stability** - Proves that minor variations produce identical hashes
+   when canonicalization is enabled.
+
+### API Usage
+
+```typescript
+import {
+  OpenClawTerminalEvidenceProvider,
+  buildTerminalEvidenceFromProvider,
+} from "predicate-claw";
+
+const provider = new OpenClawTerminalEvidenceProvider(() => ({
+  sessionId: "my-session",
+  cwd: process.cwd(),
+  command: "npm test",
+  transcript: "...",
+}));
+
+const evidence = await buildTerminalEvidenceFromProvider(provider, {
+  useCanonicalHash: true, // default
+});
+
+console.log(evidence.state_hash); // sha256:...
+```
+
 ## Other Examples
 
 - `openclaw_integration_example.py` - Python integration example
