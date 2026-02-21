@@ -1,0 +1,97 @@
+# Production Strict Policy
+# Maximum security for production agents.
+#
+# Characteristics:
+#   - Explicit allowlist only
+#   - No shell execution
+#   - Audit all decisions
+#   - Minimal attack surface
+
+version: 1
+
+defaults:
+  effect: deny
+  audit: true  # Log all decisions
+
+rules:
+  # ============================================
+  # SHELL - COMPLETELY DISABLED
+  # No shell execution in production
+  # ============================================
+
+  - id: deny_all_shell
+    effect: deny
+    action: shell.execute
+    resource: "**"
+
+  # ============================================
+  # FILE SYSTEM - READ ONLY, EXPLICIT PATHS
+  # ============================================
+
+  # Only allow reading specific config files
+  - id: allow_read_config
+    effect: allow
+    action: fs.read
+    resource:
+      - ./config/**
+      - ./public/**
+
+  # Deny all writes
+  - id: deny_all_writes
+    effect: deny
+    action: fs.write
+    resource: "**"
+
+  # ============================================
+  # HTTP - EXPLICIT ALLOWLIST ONLY
+  # ============================================
+
+  # Internal health checks only
+  - id: allow_health_checks
+    effect: allow
+    action: net.http
+    resource:
+      - "http://localhost:*/health"
+      - "http://127.0.0.1:*/health"
+
+  # Specific internal APIs (customize)
+  # - id: allow_internal_api
+  #   effect: allow
+  #   action: net.http
+  #   resource:
+  #     - "https://api.internal.example.com/v1/*"
+
+  # Deny everything else
+  - id: deny_external_http
+    effect: deny
+    action: net.http
+    resource: "**"
+
+  # ============================================
+  # EXPLICIT DENY FOR HIGH-RISK PATTERNS
+  # Defense in depth
+  # ============================================
+
+  - id: deny_sensitive_paths
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.ssh/**
+      - ~/.aws/**
+      - /etc/**
+      - "**/.env*"
+
+  - id: deny_credential_exfil
+    effect: deny
+    action: net.http
+    resource:
+      - "*://*.pastebin.com/*"
+      - "*://webhook.site/*"
+      - "*://*.ngrok.io/*"
+      - "*://*.requestbin.com/*"
+
+metadata:
+  name: Production Strict
+  description: Maximum security policy for production agents
+  version: 1.0.0
+  audit_all: true

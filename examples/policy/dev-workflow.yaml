@@ -1,0 +1,206 @@
+# Development Workflow Policy
+# Balanced policy for development agents.
+#
+# Allows common development tools while blocking:
+#   - Destructive commands
+#   - Production endpoints
+#   - Sensitive paths
+
+version: 1
+
+defaults:
+  effect: deny
+
+rules:
+  # ============================================
+  # SAFE SHELL COMMANDS
+  # Common development tools
+  # ============================================
+
+  - id: allow_git
+    effect: allow
+    action: shell.execute
+    resource:
+      - "git *"
+
+  - id: allow_npm_yarn
+    effect: allow
+    action: shell.execute
+    resource:
+      - "npm *"
+      - "npx *"
+      - "yarn *"
+      - "pnpm *"
+
+  - id: allow_cargo
+    effect: allow
+    action: shell.execute
+    resource:
+      - "cargo *"
+      - "rustc *"
+      - "rustfmt *"
+
+  - id: allow_go
+    effect: allow
+    action: shell.execute
+    resource:
+      - "go *"
+      - "gofmt *"
+
+  - id: allow_python
+    effect: allow
+    action: shell.execute
+    resource:
+      - "python *"
+      - "python3 *"
+      - "pip *"
+      - "pip3 *"
+      - "poetry *"
+      - "pytest *"
+
+  - id: allow_node
+    effect: allow
+    action: shell.execute
+    resource:
+      - "node *"
+      - "ts-node *"
+      - "tsx *"
+
+  - id: allow_build_tools
+    effect: allow
+    action: shell.execute
+    resource:
+      - "make *"
+      - "cmake *"
+      - "tsc *"
+      - "esbuild *"
+      - "vite *"
+      - "webpack *"
+
+  - id: allow_linters
+    effect: allow
+    action: shell.execute
+    resource:
+      - "eslint *"
+      - "prettier *"
+      - "black *"
+      - "ruff *"
+      - "clippy *"
+
+  - id: allow_file_ops
+    effect: allow
+    action: shell.execute
+    resource:
+      - "ls *"
+      - "cat *"
+      - "head *"
+      - "tail *"
+      - "grep *"
+      - "find *"
+      - "wc *"
+      - "diff *"
+
+  - id: allow_mkdir
+    effect: allow
+    action: shell.execute
+    resource:
+      - "mkdir *"
+      - "touch *"
+
+  # ============================================
+  # DANGEROUS COMMANDS - DENY
+  # ============================================
+
+  - id: deny_rm_rf
+    effect: deny
+    action: shell.execute
+    resource:
+      - "rm -rf *"
+      - "rm -fr *"
+
+  - id: deny_sudo
+    effect: deny
+    action: shell.execute
+    resource:
+      - "sudo *"
+
+  - id: deny_chmod_sensitive
+    effect: deny
+    action: shell.execute
+    resource:
+      - "chmod 777 *"
+      - "chmod -R *"
+
+  - id: deny_curl_bash
+    effect: deny
+    action: shell.execute
+    resource:
+      - "curl * | bash*"
+      - "curl * | sh*"
+      - "wget * | bash*"
+
+  - id: deny_env_export
+    effect: deny
+    action: shell.execute
+    resource:
+      - "export *KEY*"
+      - "export *SECRET*"
+      - "export *TOKEN*"
+      - "export *PASSWORD*"
+
+  # ============================================
+  # FILE SYSTEM
+  # ============================================
+
+  - id: allow_workspace_fs
+    effect: allow
+    action: fs.*
+    resource:
+      - ./workspace/**
+      - ./**/*.ts
+      - ./**/*.js
+      - ./**/*.json
+      - ./**/*.md
+      - ./**/*.yaml
+      - ./**/*.yml
+
+  # ============================================
+  # HTTP - Development only
+  # ============================================
+
+  - id: allow_localhost_http
+    effect: allow
+    action: net.http
+    resource:
+      - "http://localhost:*"
+      - "http://127.0.0.1:*"
+      - "https://localhost:*"
+
+  - id: allow_package_registries
+    effect: allow
+    action: net.http
+    resource:
+      - "https://registry.npmjs.org/*"
+      - "https://pypi.org/*"
+      - "https://crates.io/*"
+
+  - id: allow_github
+    effect: allow
+    action: net.http
+    resource:
+      - "https://api.github.com/*"
+      - "https://github.com/*"
+
+  # Block production endpoints
+  - id: deny_prod_endpoints
+    effect: deny
+    action: net.http
+    resource:
+      - "https://api.production.*"
+      - "https://prod.*"
+      - "https://*.prod.*"
+
+metadata:
+  name: Development Workflow
+  description: Balanced policy for development agents
+  version: 1.0.0

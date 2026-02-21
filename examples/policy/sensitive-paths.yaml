@@ -1,0 +1,114 @@
+# Sensitive Path Blocking Policy
+# Blocks access to common sensitive paths regardless of source.
+#
+# These paths contain credentials, keys, or system configuration
+# that should never be accessible to AI agents.
+
+version: 1
+
+rules:
+  # SSH keys and configuration
+  - id: deny_ssh_keys
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.ssh/*
+      - ~/.ssh/**
+
+  # Cloud provider credentials
+  - id: deny_aws_credentials
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.aws/*
+      - ~/.aws/**
+
+  - id: deny_gcloud_credentials
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.config/gcloud/*
+      - ~/.config/gcloud/**
+
+  - id: deny_azure_credentials
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.azure/*
+      - ~/.azure/**
+
+  # Kubernetes configs
+  - id: deny_kube_config
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.kube/*
+      - ~/.kube/**
+
+  # Docker credentials
+  - id: deny_docker_config
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.docker/config.json
+      - ~/.docker/**
+
+  # Environment files (may contain secrets)
+  - id: deny_env_files
+    effect: deny
+    action: fs.*
+    resource:
+      - "**/.env"
+      - "**/.env.*"
+      - "**/.envrc"
+
+  # System paths
+  - id: deny_etc
+    effect: deny
+    action: fs.*
+    resource:
+      - /etc/*
+      - /etc/**
+
+  - id: deny_var_secrets
+    effect: deny
+    action: fs.*
+    resource:
+      - /var/run/secrets/**
+
+  # macOS keychain
+  - id: deny_keychain
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/Library/Keychains/*
+      - ~/Library/Keychains/**
+
+  # GPG keys
+  - id: deny_gpg
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.gnupg/*
+      - ~/.gnupg/**
+
+  # Git credentials
+  - id: deny_git_credentials
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.git-credentials
+      - ~/.gitconfig
+
+  # npm/yarn tokens
+  - id: deny_npm_tokens
+    effect: deny
+    action: fs.*
+    resource:
+      - ~/.npmrc
+      - ~/.yarnrc
+
+metadata:
+  name: Sensitive Path Blocking
+  description: Block access to credential and key material paths
+  version: 1.0.0
