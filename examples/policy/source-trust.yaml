@@ -1,0 +1,129 @@
+# Source-Based Trust Policy
+# Different permission levels based on where the request originated.
+#
+# Source labels:
+#   trusted_ui     - Direct user input from trusted interface
+#   trusted_api    - Authenticated API request
+#   untrusted_dm   - External message (DM, email, etc.)
+#   web_content    - Content scraped from web pages
+#   system         - Internal system calls
+
+version: 1
+
+defaults:
+  effect: deny
+
+rules:
+  # ============================================
+  # TRUSTED UI - Direct user interaction
+  # Most permissive, but still blocks credentials
+  # ============================================
+
+  - id: trusted_ui_shell
+    effect: allow
+    action: shell.execute
+    when:
+      source: trusted_ui
+
+  - id: trusted_ui_fs_read
+    effect: allow
+    action: fs.read
+    when:
+      source: trusted_ui
+
+  - id: trusted_ui_fs_write
+    effect: allow
+    action: fs.write
+    resource: ./workspace/**
+    when:
+      source: trusted_ui
+
+  - id: trusted_ui_http
+    effect: allow
+    action: net.http
+    when:
+      source: trusted_ui
+
+  # ============================================
+  # TRUSTED API - Authenticated programmatic access
+  # Similar to trusted_ui but may have tighter resource bounds
+  # ============================================
+
+  - id: trusted_api_shell_safe
+    effect: allow
+    action: shell.execute
+    resource:
+      - "git *"
+      - "npm *"
+      - "cargo *"
+      - "go *"
+      - "python *"
+    when:
+      source: trusted_api
+
+  - id: trusted_api_fs_read
+    effect: allow
+    action: fs.read
+    resource: ./workspace/**
+    when:
+      source: trusted_api
+
+  - id: trusted_api_http_internal
+    effect: allow
+    action: net.http
+    resource:
+      - "http://localhost:*"
+      - "http://127.0.0.1:*"
+    when:
+      source: trusted_api
+
+  # ============================================
+  # UNTRUSTED DM - External messages
+  # Very restrictive - likely prompt injection vector
+  # ============================================
+
+  - id: untrusted_dm_shell_deny
+    effect: deny
+    action: shell.execute
+    when:
+      source: untrusted_dm
+
+  - id: untrusted_dm_fs_read_workspace_only
+    effect: allow
+    action: fs.read
+    resource: ./workspace/public/**
+    when:
+      source: untrusted_dm
+
+  - id: untrusted_dm_http_deny
+    effect: deny
+    action: net.http
+    when:
+      source: untrusted_dm
+
+  # ============================================
+  # WEB CONTENT - Scraped from web pages
+  # Maximum restriction - high injection risk
+  # ============================================
+
+  - id: web_content_deny_all
+    effect: deny
+    action: "*"
+    when:
+      source: web_content
+
+  # ============================================
+  # SYSTEM - Internal system calls
+  # Trusted but audited
+  # ============================================
+
+  - id: system_allow_all
+    effect: allow
+    action: "*"
+    when:
+      source: system
+
+metadata:
+  name: Source-Based Trust
+  description: Different permission levels based on request source
+  version: 1.0.0

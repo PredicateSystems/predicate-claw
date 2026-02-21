@@ -1,0 +1,137 @@
+# Approved Hosts Policy
+# Allowlist for outbound HTTP requests.
+#
+# Customize this list for your environment:
+#   - Internal APIs
+#   - Known SaaS endpoints
+#   - Package registries
+
+version: 1
+
+defaults:
+  effect: deny
+
+rules:
+  # ============================================
+  # LOCALHOST - Always allowed
+  # ============================================
+
+  - id: allow_localhost
+    effect: allow
+    action: net.http
+    resource:
+      - "http://localhost:*"
+      - "http://127.0.0.1:*"
+      - "https://localhost:*"
+      - "https://127.0.0.1:*"
+
+  # ============================================
+  # PACKAGE REGISTRIES
+  # ============================================
+
+  - id: allow_npm_registry
+    effect: allow
+    action: net.http
+    resource:
+      - "https://registry.npmjs.org/*"
+      - "https://registry.yarnpkg.com/*"
+
+  - id: allow_pypi
+    effect: allow
+    action: net.http
+    resource:
+      - "https://pypi.org/*"
+      - "https://files.pythonhosted.org/*"
+
+  - id: allow_crates_io
+    effect: allow
+    action: net.http
+    resource:
+      - "https://crates.io/*"
+      - "https://static.crates.io/*"
+
+  - id: allow_go_proxy
+    effect: allow
+    action: net.http
+    resource:
+      - "https://proxy.golang.org/*"
+      - "https://sum.golang.org/*"
+
+  # ============================================
+  # GITHUB / SOURCE CONTROL
+  # ============================================
+
+  - id: allow_github_api
+    effect: allow
+    action: net.http
+    resource:
+      - "https://api.github.com/*"
+      - "https://raw.githubusercontent.com/*"
+
+  - id: allow_gitlab_api
+    effect: allow
+    action: net.http
+    resource:
+      - "https://gitlab.com/api/*"
+
+  # ============================================
+  # DOCUMENTATION SITES
+  # ============================================
+
+  - id: allow_docs_sites
+    effect: allow
+    action: net.http
+    resource:
+      - "https://docs.*.com/*"
+      - "https://*.readthedocs.io/*"
+      - "https://developer.mozilla.org/*"
+
+  # ============================================
+  # INTERNAL APIS (customize for your org)
+  # ============================================
+
+  # Example: internal API gateway
+  # - id: allow_internal_api
+  #   effect: allow
+  #   action: net.http
+  #   resource:
+  #     - "https://api.internal.example.com/*"
+
+  # Example: internal services
+  # - id: allow_internal_services
+  #   effect: allow
+  #   action: net.http
+  #   resource:
+  #     - "https://*.internal.example.com/*"
+
+  # ============================================
+  # KNOWN SAAS (customize for your tools)
+  # ============================================
+
+  # Example: Slack webhooks
+  # - id: allow_slack_webhooks
+  #   effect: allow
+  #   action: net.http
+  #   resource:
+  #     - "https://hooks.slack.com/*"
+
+  # Example: Sentry error reporting
+  # - id: allow_sentry
+  #   effect: allow
+  #   action: net.http
+  #   resource:
+  #     - "https://*.ingest.sentry.io/*"
+
+  # ============================================
+  # CATCH-ALL DENY
+  # ============================================
+
+  - id: deny_unknown_hosts
+    effect: deny
+    action: net.http
+    resource: "**"
+
+metadata:
+  name: Approved Hosts
+  description: Allowlist for outbound HTTP requests
+  version: 1.0.0

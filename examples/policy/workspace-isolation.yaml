@@ -1,0 +1,51 @@
+# Workspace Isolation Policy
+# Restricts all file operations to a specific project directory.
+#
+# Usage:
+#   1. Update WORKSPACE_ROOT to your project path
+#   2. Add any additional allowed paths to the allowlist
+
+version: 1
+
+defaults:
+  effect: deny
+
+rules:
+  # Allow reads within the workspace
+  - id: allow_workspace_reads
+    effect: allow
+    action: fs.read
+    resource: ./workspace/**
+
+  # Allow writes within the workspace
+  - id: allow_workspace_writes
+    effect: allow
+    action: fs.write
+    resource: ./workspace/**
+
+  # Allow reading package manifests (for dependency resolution)
+  - id: allow_package_manifests
+    effect: allow
+    action: fs.read
+    resource:
+      - ./package.json
+      - ./package-lock.json
+      - ./yarn.lock
+      - ./pnpm-lock.yaml
+      - ./Cargo.toml
+      - ./Cargo.lock
+      - ./go.mod
+      - ./go.sum
+      - ./requirements.txt
+      - ./pyproject.toml
+
+  # Deny all paths outside workspace (explicit for clarity)
+  - id: deny_outside_workspace
+    effect: deny
+    action: fs.*
+    resource: /**
+
+metadata:
+  name: Workspace Isolation
+  description: Restrict file operations to project directory
+  version: 1.0.0
