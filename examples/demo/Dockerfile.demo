@@ -1,0 +1,18 @@
+# Demo application container
+FROM node:22-slim
+
+WORKDIR /app
+
+# Install TypeScript and tsx for running demo
+RUN npm install -g tsx
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy demo files
+COPY examples/demo/demo.ts ./demo.ts
+COPY examples/demo/policy.demo.json ./policy.demo.json
+
+# Wait for sidecar to be ready, then run demo
+CMD ["tsx", "demo.ts"]

@@ -1,0 +1,52 @@
+{
+  "rules": [
+    {
+      "name": "deny-ssh-keys-untrusted",
+      "effect": "deny",
+      "principals": ["*"],
+      "actions": ["fs.*"],
+      "resources": ["*/.ssh/*", "/home/*/.ssh/*", "/Users/*/.ssh/*", "~/.ssh/*"],
+      "required_labels": []
+    },
+    {
+      "name": "deny-etc-sensitive",
+      "effect": "deny",
+      "principals": ["*"],
+      "actions": ["fs.*"],
+      "resources": ["/etc/passwd", "/etc/shadow", "/etc/hosts"],
+      "required_labels": []
+    },
+    {
+      "name": "deny-dangerous-shell",
+      "effect": "deny",
+      "principals": ["*"],
+      "actions": ["shell.*"],
+      "resources": ["*curl*|*bash*", "*wget*|*sh*", "*rm -rf*"],
+      "required_labels": []
+    },
+    {
+      "name": "deny-exfil-unknown-host",
+      "effect": "deny",
+      "principals": ["*"],
+      "actions": ["http.post"],
+      "resources": ["*webhook.site*", "*requestbin*", "*ngrok*"],
+      "required_labels": []
+    },
+    {
+      "name": "allow-trusted-reads",
+      "effect": "allow",
+      "principals": ["*"],
+      "actions": ["fs.read"],
+      "resources": ["*"],
+      "required_labels": ["source:trusted_ui"]
+    },
+    {
+      "name": "default-allow",
+      "effect": "allow",
+      "principals": ["*"],
+      "actions": ["*"],
+      "resources": ["*"],
+      "required_labels": []
+    }
+  ]
+}

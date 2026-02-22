@@ -23,6 +23,14 @@ Result: ActionDeniedError — SSH key never read
 
 ---
 
+## Runtime Authorization for AI Agents
+
+<video src="https://github.com/user-attachments/assets/0fdf1ebb-6044-4288-9613-cd46f98cc284" autoplay loop muted playsinline></video>
+
+*Prompt injection, data exfiltration, credential theft — blocked in under 15ms.*
+
+---
+
 ## The Problem
 
 AI agents are powerful. They can read files, run commands, make HTTP requests.
@@ -104,11 +112,27 @@ await provider.authorize({
 const content = await fs.readFile(path);  // Only runs if authorized
 ```
 
-### 3. See it in action
+### 3. Run the demo
+
+**Option A: Docker (Recommended)**
+
+Run the full end-to-end demo safely in Docker. This is the safest way to see the attack scenarios — nothing touches your real filesystem.
 
 ```bash
 git clone https://github.com/PredicateSystems/predicate-claw
-cd predicate-claw
+cd predicate-claw/examples/demo
+./start-demo.sh
+```
+
+The demo shows 4 scenarios with a real sidecar:
+- SSH key exfiltration → **BLOCKED**
+- Shell command injection → **BLOCKED**
+- Data exfiltration → **BLOCKED**
+- Legitimate file read → **ALLOWED**
+
+**Option B: Unit test (mocked sidecar)**
+
+```bash
 npm install
 npm run test:demo
 ```
