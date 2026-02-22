@@ -73,18 +73,46 @@ Predicate Authority intercepts every tool call and authorizes it **before execut
 
 ---
 
+## Sidecar Prerequisite
+
+This SDK requires the **Predicate Authority Sidecar** daemon to be running. The sidecar is a high-performance Rust binary that handles policy evaluation and mandate signing locally—no data leaves your infrastructure.
+
+| Resource | Link |
+|----------|------|
+| Sidecar Repository | [predicate-authority-sidecar](https://github.com/PredicateSystems/predicate-authority-sidecar) |
+| Download Binaries | [Latest Releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases) |
+| License | MIT / Apache 2.0 |
+
+---
+
 ## Quick Start
 
-### 0. Prerequisites
+### 0. Start the Predicate Sidecar
 
-This SDK requires the Predicate Authority sidecar to evaluate policies locally.
-
+**Option A: Docker (Recommended)**
 ```bash
-# Install via pip (requires Python 3.11+)
-pip install predicate-authority
+docker run -d -p 8787:8787 ghcr.io/predicatesystems/predicate-authorityd:latest
+```
 
-# Start the sidecar
-predicate-authorityd --port 8787
+**Option B: Download Binary**
+```bash
+# macOS (Apple Silicon)
+curl -fsSL https://github.com/PredicateSystems/predicate-authority-sidecar/releases/latest/download/predicate-authorityd-darwin-arm64.tar.gz | tar -xz
+chmod +x predicate-authorityd
+./predicate-authorityd --port 8787
+
+# Linux x64
+curl -fsSL https://github.com/PredicateSystems/predicate-authority-sidecar/releases/latest/download/predicate-authorityd-linux-x64.tar.gz | tar -xz
+chmod +x predicate-authorityd
+./predicate-authorityd --port 8787
+```
+
+See [all platform binaries](https://github.com/PredicateSystems/predicate-authority-sidecar/releases) for Linux ARM64, macOS Intel, and Windows.
+
+**Verify it's running:**
+```bash
+curl http://localhost:8787/health
+# {"status":"ok"}
 ```
 
 ### 1. Install
@@ -93,26 +121,42 @@ predicate-authorityd --port 8787
 npm install predicate-claw
 ```
 
-### 2. Protect your agent
+### 2. Protect your OpenClaw agent
+
+`predicate-claw` wraps your OpenClaw tool execution with pre-authorization. Here's how it intercepts the standard flow:
 
 ```typescript
-import { GuardedProvider } from "predicate-claw";
+import { GuardedProvider, ToolAdapter } from "predicate-claw";
+import { OpenClawClient } from "@openclaw/sdk";  // Your existing OpenClaw client
 
+// Initialize the provider
 const provider = new GuardedProvider({
-  principal: "agent:my-agent",
+  principal: "agent:my-openclaw-bot",
 });
 
-// Before: unprotected
-const content = await fs.readFile(path);
+// Create a tool adapter that wraps OpenClaw tool calls
+const adapter = new ToolAdapter(provider);
 
-// After: protected
-await provider.authorize({
+// ─────────────────────────────────────────────────────────────
+// BEFORE: Unprotected OpenClaw tool execution
+// ─────────────────────────────────────────────────────────────
+// const result = await openClawClient.executeTool("fs.read", { path });
+// ⚠️ If path is ~/.ssh/id_rsa, your SSH key is leaked!
+
+// ─────────────────────────────────────────────────────────────
+// AFTER: Protected with Predicate Authority
+// ─────────────────────────────────────────────────────────────
+const result = await adapter.execute({
   action: "fs.read",
   resource: path,
-  context: { source: "untrusted_dm" }
+  context: { source: "untrusted_dm" },  // Where did this request originate?
+  execute: async () => openClawClient.executeTool("fs.read", { path }),
 });
-const content = await fs.readFile(path);  // Only runs if authorized
+// ✅ If path is ~/.ssh/id_rsa → ActionDeniedError thrown, tool never runs
+// ✅ If path is ./README.md → Tool executes normally
 ```
+
+**Key insight:** The `execute` callback is only invoked if the sidecar returns `ALLOW`. Your OpenClaw tool code remains unchanged—Predicate wraps it with a security gate.
 
 ### 3. Run the demo
 
