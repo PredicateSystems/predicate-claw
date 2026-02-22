@@ -1,0 +1,25 @@
+# Pre-built sidecar container for fast startup
+FROM node:22-slim
+
+# Install curl for downloading binary
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Detect architecture and download appropriate binary
+ARG TARGETARCH
+RUN ARCH=$(echo ${TARGETARCH:-$(uname -m)} | sed 's/amd64/x64/' | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/') && \
+    echo "Detected architecture: $ARCH" && \
+    curl -fsSL -o /tmp/sidecar.tar.gz \
+    "https://github.com/PredicateSystems/predicate-authority-sidecar/releases/latest/download/predicate-authorityd-linux-${ARCH}.tar.gz" && \
+    tar -xzf /tmp/sidecar.tar.gz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/predicate-authorityd && \
+    rm /tmp/sidecar.tar.gz
+
+# Copy policy file
+COPY examples/demo/policy.demo.json /app/policy.json
+
+EXPOSE 8787
+
+# Run sidecar
+CMD ["predicate-authorityd", "--host", "0.0.0.0", "--port", "8787", "--mode", "local_only", "--policy-file", "/app/policy.json", "--log-level", "info", "run"]

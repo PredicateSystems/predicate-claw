@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  # Predicate Authority Sidecar - the authorization engine
+  sidecar:
+    build:
+      context: ../..
+      dockerfile: examples/demo/Dockerfile.sidecar
+    ports:
+      - "8787:8787"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8787/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+    networks:
+      - demo-net
+
+  # Demo application - shows hack vs fix scenarios
+  demo:
+    build:
+      context: ../..
+      dockerfile: examples/demo/Dockerfile.demo
+    environment:
+      SIDECAR_URL: http://sidecar:8787
+    depends_on:
+      sidecar:
+        condition: service_healthy
+    networks:
+      - demo-net
+
+networks:
+  demo-net:
+    driver: bridge
