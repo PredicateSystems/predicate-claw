@@ -463,6 +463,57 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md).
 
 ---
 
+## Audit Vault and Control Plane
+
+The Predicate sidecar and SDKs are 100% open-source and free for local development and single-agent deployments.
+
+However, when deploying a fleet of AI agents in regulated environments (FinTech, Healthcare, Security), security teams cannot manage scattered YAML files or local SQLite databases. For production fleets, we offer the **Predicate Control Plane** and **Audit Vault**.
+
+<table>
+<tr>
+<td width="50%" align="center">
+<img src="docs/images/overview.png" alt="Control Plane Overview" width="100%">
+<br><em>Real-time dashboard with authorization metrics</em>
+</td>
+<td width="50%" align="center">
+<img src="docs/images/fleet_management.png" alt="Fleet Management" width="100%">
+<br><em>Fleet management across all sidecars</em>
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+<img src="docs/images/audit_compliance.png" alt="Audit & Compliance" width="100%">
+<br><em>WORM-ready audit ledger with 7-year retention</em>
+</td>
+<td width="50%" align="center">
+<img src="docs/images/policies.png" alt="Policy Management" width="100%">
+<br><em>Centralized policy editor</em>
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+<img src="docs/images/revocations.png" alt="Revocations" width="100%">
+<br><em>Global kill-switches and revocations</em>
+</td>
+<td width="50%" align="center">
+<img src="docs/images/siem_integrations.png" alt="SIEM Integrations" width="100%">
+<br><em>SIEM integrations (Splunk, Datadog, Sentinel)</em>
+</td>
+</tr>
+</table>
+
+**Control Plane Features:**
+
+* **Global Kill-Switches:** Instantly revoke a compromised agent's `principal` or `intent_hash`. The revocation syncs to all connected sidecars in milliseconds.
+* **Immutable Audit Vault (WORM):** Every authorized mandate and blocked action is cryptographically signed and stored in a 7-year, WORM-ready ledger. Prove to SOC2 auditors exactly *what* your agents did and *why* they were authorized.
+* **Fleet Management:** Manage your fleet of agents with total control
+* **SIEM Integrations:** Stream authorization events and security alerts directly to Datadog, Splunk, or your existing security dashboard.
+* **Centralized Policy Management:** Update and publish access policies across your entire fleet without redeploying agent code.
+
+**[Learn more about Predicate Systems](https://www.predicatesystems.ai)**
+
+---
+
 ## License
 
 MIT OR Apache-2.0
