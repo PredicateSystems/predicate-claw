@@ -2,10 +2,15 @@ import crypto from "node:crypto";
 import type { AuthorizationRequest } from "@predicatesystems/authority";
 import {
   type AuthorityAdapter,
+  type VerificationResult,
+  type VerifyRequest,
+  type ActualOperation,
   createDefaultAuthorityAdapter,
 } from "./authority-client.js";
 import { defaultProviderConfig, type ProviderConfig } from "./config.js";
 import { ActionDeniedError, SidecarUnavailableError } from "./errors.js";
+
+export type { VerificationResult, VerifyRequest, ActualOperation };
 
 export interface GuardRequest {
   action: string;
@@ -141,6 +146,57 @@ export class GuardedProvider {
         return null;
       }
       throw error;
+    }
+  }
+
+  /**
+   * Verify that an actual operation matches what was authorized.
+   *
+   * Call this after executing an operation to confirm the agent
+   * did what it said it would do.
+   *
+   * @param mandateId - The mandate ID from authorization
+   * @param actual - The actual operation that was performed
+   * @returns Verification result
+   *
+   * @example
+   * ```typescript
+   * const mandateId = await provider.authorize({ action: 'fs.read', resource: '/src/index.ts', args: {} });
+   * const content = await fs.readFile('/src/index.ts');
+   * const result = await provider.verify(mandateId, {
+   *   action: 'fs.read',
+   *   resource: '/src/index.ts',
+   *   contentHash: sha256(content),
+   * });
+   * if (!result.verified) {
+   *   console.error('Verification failed:', result.reason);
+   * }
+   * ```
+   */
+  async verify(
+    mandateId: string,
+    actual: ActualOperation,
+  ): Promise<VerificationResult> {
+    if (!this.authorityClient.verify) {
+      // Verification not supported by this adapter
+      return {
+        verified: true,
+        reason: "verification_not_supported",
+      };
+    }
+
+    try {
+      return await this.authorityClient.verify({
+        mandateId,
+        actual,
+      });
+    } catch (error) {
+      // Best-effort verification; don't fail the operation
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        verified: false,
+        reason: `verification_error: ${message}`,
+      };
     }
   }
 
