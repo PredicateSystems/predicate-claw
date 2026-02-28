@@ -16,7 +16,7 @@
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "dependencies": {
-    "@predicatesystems/authority": "^0.3.3"
+    "@predicatesystems/authority": "^0.4.1"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
