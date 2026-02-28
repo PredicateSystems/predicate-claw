@@ -203,10 +203,13 @@ function redactResource(action: string, resource: string): string {
 }
 
 function stableJson(value: unknown): string {
+  if (value === undefined || value === null) {
+    return "null";
+  }
   if (Array.isArray(value)) {
     return `[${value.map((v) => stableJson(v)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>).sort(
       ([a], [b]) => a.localeCompare(b),
     );
