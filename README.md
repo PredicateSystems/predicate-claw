@@ -17,7 +17,7 @@ Your agent is one prompt injection away from running `rm -rf /` or leaking your 
 npm install predicate-claw
 ```
 
-> **Not using OpenClaw?** We also support Python agents (LangChain, Playwright, browser-use, PydanticAI, etc) with 3 lines of code. See the [predicate-secure SDK](https://predicatesystems.ai/docs/secure) and [Enterprise Control Plane](https://predicatesystems.ai/docs/vault).
+> **Not using OpenClaw?** We also support other agents (LangChain, Playwright, browser-use, PydanticAI, etc) with 3 lines of code. See the [predicate-secure SDK](https://predicatesystems.ai/docs/secure) and [Enterprise Control Plane](https://predicatesystems.ai/docs/vault).
 
 [![npm version](https://img.shields.io/npm/v/predicate-claw.svg)](https://www.npmjs.com/package/predicate-claw)
 [![CI](https://github.com/PredicateSystems/predicate-claw/actions/workflows/tests.yml/badge.svg)](https://github.com/PredicateSystems/predicate-claw/actions)
