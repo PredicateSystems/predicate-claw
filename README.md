@@ -16,7 +16,6 @@ Your agent is one prompt injection away from running `rm -rf /` or leaking your 
 ```bash
 npm install predicate-claw
 ```
-**predicate-claw** is a drop-in security plugin that intercepts every tool call and blocks unauthorized actions—**before they execute** in your OpenClaw. 
 
 > **Not using OpenClaw?** We also support Python agents (LangChain, Playwright, browser-use, PydanticAI, etc) with 3 lines of code. See the [predicate-secure SDK](https://predicatesystems.ai/docs/secure) and [Enterprise Control Plane](https://predicatesystems.ai/docs/vault).
 
