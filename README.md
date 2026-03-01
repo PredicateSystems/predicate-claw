@@ -8,11 +8,10 @@
 <p align="center">
   <strong>Drop-in security for OpenClaw. Block unauthorized actions before they execute.</strong>
 </p>
----
 
 Your agent is one prompt injection away from running `rm -rf /` or leaking your `~/.aws/credentials`.
 
-**predicate-claw** is a drop-in security plugin that intercepts every tool call and blocks unauthorized actions—**before they execute**. The LLM has no idea the security layer exists. Zero changes to your agent logic. Zero changes to your prompts.
+**predicate-claw** is a drop-in security plugin that intercepts every tool call and blocks unauthorized actions—**before they execute** in your OpenClaw. The LLM has no idea the security layer exists. Zero changes to your agent logic. Zero changes to your prompts.
 
 ```bash
 npm install predicate-claw

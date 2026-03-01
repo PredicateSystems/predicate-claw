@@ -1,6 +1,6 @@
 {
   "name": "predicate-claw",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "TypeScript OpenClaw security provider with Predicate Authority pre-execution checks and SecureClaw plugin.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
