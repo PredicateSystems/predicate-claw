@@ -87,7 +87,7 @@ export default createSecureClawPlugin({
 });
 ```
 
-### 2. Start the sidecar
+### 2. Start the [sidecar](https://github.com/PredicateSystems/predicate-authority-sidecar)
 
 ```bash
 # Download (macOS ARM)
