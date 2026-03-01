@@ -1,0 +1,17 @@
+# Demo application container for SecureClaw scripted scenarios
+#
+# The npm install layer is cached - subsequent builds are fast.
+#
+FROM node:22-slim
+
+WORKDIR /app
+
+# Install TypeScript runner (cached layer)
+RUN npm install -g tsx
+
+# Copy demo files (changes to these trigger minimal rebuild)
+COPY demo.ts ./demo.ts
+COPY policy.demo.json ./policy.demo.json
+
+# Run demo
+CMD ["tsx", "demo.ts"]

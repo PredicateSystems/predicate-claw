@@ -1,0 +1,30 @@
+# Pre-built sidecar container for SecureClaw demo
+#
+# The binary download is cached in Docker layers - subsequent builds are fast.
+# Only rebuilds when Dockerfile changes or you use --no-cache.
+#
+FROM debian:bookworm-slim
+
+# Install curl for downloading binary and health checks
+RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Detect architecture and download appropriate binary
+# This layer is cached after first build
+ARG TARGETARCH
+RUN ARCH=$(echo ${TARGETARCH:-$(uname -m)} | sed 's/amd64/x64/' | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/') && \
+    echo "Detected architecture: $ARCH" && \
+    curl -fsSL -o /tmp/sidecar.tar.gz \
+    "https://github.com/PredicateSystems/predicate-authority-sidecar/releases/latest/download/predicate-authorityd-linux-${ARCH}.tar.gz" && \
+    tar -xzf /tmp/sidecar.tar.gz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/predicate-authorityd && \
+    rm /tmp/sidecar.tar.gz
+
+# Copy policy file (at end for better caching - policy changes don't trigger binary re-download)
+COPY policy.demo.json /app/policy.json
+
+EXPOSE 8787
+
+# Run sidecar in local_only mode with demo policy
+CMD ["predicate-authorityd", "--host", "0.0.0.0", "--port", "8787", "--mode", "local_only", "--policy-file", "/app/policy.json", "--log-level", "info", "run"]

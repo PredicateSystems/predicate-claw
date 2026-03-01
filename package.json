@@ -1,9 +1,19 @@
 {
   "name": "predicate-claw",
-  "version": "0.2.0",
-  "description": "TypeScript OpenClaw security provider with Predicate Authority pre-execution checks.",
+  "version": "0.3.0",
+  "description": "TypeScript OpenClaw security provider with Predicate Authority pre-execution checks and SecureClaw plugin.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./plugin": {
+      "import": "./dist/src/openclaw-plugin.js",
+      "types": "./dist/src/openclaw-plugin.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
@@ -11,12 +21,26 @@
     "test:demo": "vitest run tests/hack-vs-fix-demo.test.ts",
     "test:ci": "npm run typecheck && npm test"
   },
-  "keywords": [],
+  "keywords": [
+    "openclaw",
+    "security",
+    "authorization",
+    "predicate-authority",
+    "zero-trust"
+  ],
   "author": "",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "dependencies": {
     "@predicatesystems/authority": "^0.4.1"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.2.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^25.3.0",

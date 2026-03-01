@@ -10,3 +10,4 @@ export * from "./openclaw-hooks.js";
 export * from "./openclaw-plugin-api.js";
 export * from "./provider.js";
 export * from "./runtime-integration.js";
+export * from "./openclaw-plugin.js";
