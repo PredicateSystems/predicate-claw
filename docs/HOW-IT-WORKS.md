@@ -1052,8 +1052,81 @@ See `demo/README.md` for full documentation.
 
 ---
 
+## Fleet Management with Predicate Vault
+
+For production deployments with multiple OpenClaw agents, connect your sidecars to the [Predicate Vault](https://www.predicatesystems.ai/predicate-vault) control plane.
+
+### Why Use the Control Plane?
+
+| Local Sidecar Only | With Predicate Vault |
+|-------------------|---------------------|
+| Policy stored on each machine | Centralized policy management |
+| Manual updates across fleet | Push updates to all sidecars instantly |
+| Local audit logs | Immutable, WORM-compliant audit ledger |
+| No revocation mechanism | Real-time kill switches |
+| No visibility across agents | Fleet-wide dashboard |
+
+### Connecting to the Control Plane
+
+```bash
+./predicate-authorityd \
+  --policy-file policy.json \
+  --control-plane-url https://api.predicatesystems.ai \
+  --tenant-id your-tenant-id \
+  --project-id your-project-id \
+  --predicate-api-key $PREDICATE_API_KEY \
+  --sync-enabled \
+  dashboard
+```
+
+### Control Plane CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `--control-plane-url` | Predicate Vault API endpoint |
+| `--tenant-id` | Your organization tenant ID |
+| `--project-id` | Project grouping for agents |
+| `--predicate-api-key` | API key from Predicate Vault dashboard |
+| `--sync-enabled` | Enable real-time sync with control plane |
+
+### What Gets Synced?
+
+When `--sync-enabled` is set:
+
+1. **Policy updates** — Changes pushed from Vault are applied in <100ms
+2. **Revocations** — Kill a compromised agent instantly across all sidecars
+3. **Audit events** — Every ALLOW/DENY decision is streamed to immutable ledger
+4. **Metrics** — Authorization latency, throughput, and block rates
+
+### Real-Time Revocation
+
+If an agent is compromised (e.g., prompt injection attack detected), you can instantly revoke its principal from the Predicate Vault dashboard:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PREDICATE VAULT - REVOCATIONS                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  [+ Add Revocation]                                         │
+│                                                             │
+│  Active Revocations:                                        │
+│  ─────────────────────────────────────────────────────────  │
+│  agent:compromised-bot    REVOKED    2024-01-15 14:32:01   │
+│  agent:suspicious-worker  REVOKED    2024-01-14 09:15:44   │
+│                                                             │
+│  All connected sidecars receive revocations in <100ms.      │
+│  Revoked agents cannot authorize ANY actions.               │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The revoked principal is blocked at the sidecar level—the LLM never even sees the denial.
+
+---
+
 ## Next Steps
 
 - Read the [Post-Execution Verification Design](../../../predicate-authority/docs/post-execution-verification.md)
 - Explore policy templates in `rust-predicate-authorityd/policies/`
 - Run the predicate-claw demo: `openclaw-predicate-provider/examples/demo/start-demo.sh`
+- Connect to [Predicate Vault](https://www.predicatesystems.ai/predicate-vault) for fleet management
