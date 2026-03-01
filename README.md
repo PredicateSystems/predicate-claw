@@ -228,7 +228,7 @@ For managing multiple OpenClaw agents across your organization, connect sidecars
 ```bash
 ./predicate-authorityd \
   --policy-file policy.json \
-  --control-plane-url https://api.predicatesystems.ai \
+  --control-plane-url https://api.predicatesystems.dev \
   --tenant-id your-tenant-id \
   --project-id your-project-id \
   --predicate-api-key $PREDICATE_API_KEY \
