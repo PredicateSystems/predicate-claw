@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  # Predicate Authority Sidecar - the authorization engine
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile.sidecar
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./policy.json:/app/policy.json:ro
+    environment:
+      LOCAL_IDP_SIGNING_KEY: "demo-secret-key-replace-in-production-minimum-32-chars"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8787/health || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+    networks:
+      - demo-net
+
+  # Integration Demo - shows actual SDK usage
+  # Builds predicate-claw from source since it's not published to npm yet
+  demo:
+    build:
+      context: ../..
+      dockerfile: examples/integration-demo/Dockerfile
+    depends_on:
+      sidecar:
+        condition: service_healthy
+    environment:
+      PREDICATE_SIDECAR_URL: http://sidecar:8787
+      DEMO_TYPING_SPEED: ${DEMO_TYPING_SPEED:-30}
+    networks:
+      - demo-net
+    tty: true
+
+networks:
+  demo-net:
+    driver: bridge
