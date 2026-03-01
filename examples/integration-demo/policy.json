@@ -1,0 +1,67 @@
+{
+  "rules": [
+    {
+      "name": "allow-workspace-reads",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["fs.read", "fs.list"],
+      "resources": ["./src/**", "./package.json", "./tsconfig.json"]
+    },
+    {
+      "name": "allow-safe-shell",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["shell.exec"],
+      "resources": ["ls *", "cat *", "grep *", "npm test", "npm run *"]
+    },
+    {
+      "name": "allow-https-requests",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["http.request"],
+      "resources": ["https://*"]
+    },
+    {
+      "name": "deny-ssh-keys",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.*"],
+      "resources": ["~/.ssh/*", "/home/*/.ssh/*", "**/.ssh/*"]
+    },
+    {
+      "name": "deny-env-files",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.*"],
+      "resources": ["**/.env", "**/.env.*", "**/.env.local"]
+    },
+    {
+      "name": "deny-system-files",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.*"],
+      "resources": ["/etc/*", "/var/*", "/usr/*"]
+    },
+    {
+      "name": "deny-dangerous-commands",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["shell.exec"],
+      "resources": ["*rm -rf*", "*sudo*", "*curl*|*bash*", "*wget*|*sh*"]
+    },
+    {
+      "name": "deny-file-mutations",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.write", "fs.delete", "fs.move"],
+      "resources": ["**"]
+    },
+    {
+      "name": "deny-insecure-http",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["http.*"],
+      "resources": ["http://*"]
+    }
+  ]
+}

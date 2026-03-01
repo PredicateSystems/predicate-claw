@@ -1,4 +1,14 @@
-# predicate-claw
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/predicate-claw-logo.png">
+    <img src="docs/images/predicate-claw-logo.png" alt="predicate-claw" width="400">
+  </picture>
+</p>
+
+<p align="center">
+  <strong>Drop-in security for OpenClaw. Block unauthorized actions before they execute.</strong>
+</p>
+---
 
 Your agent is one prompt injection away from running `rm -rf /` or leaking your `~/.aws/credentials`.
 
@@ -30,11 +40,11 @@ npm install predicate-claw
 
 ## Demo
 
-![SecureClaw Demo](examples/secureclaw-demo/demo.gif)
+![SecureClaw Demo](examples/integration-demo/demo.gif)
 
 **Left pane:** The Predicate Authority sidecar evaluates every tool request against security policies in real-time, showing ALLOW or DENY decisions with sub-millisecond latency.
 
-**Right pane:** A simulated agent conversation where the user attempts various operations—legitimate file reads succeed, while sensitive file access, dangerous shell commands, and prompt injection attacks are blocked before execution.
+**Right pane:** The integration demo using the real `createSecureClawPlugin()` SDK—legitimate file reads succeed, while sensitive file access, dangerous shell commands, and prompt injection attacks are blocked before execution.
 
 ---
 
@@ -277,52 +287,21 @@ npm run build      # Build
 ### Run the Demo
 
 ```bash
-cd examples/secureclaw-demo
-./start-demo-split.sh --sidecar-path ./predicate-authorityd --slow
+cd examples/integration-demo
+./start-demo-split.sh --slow
 ```
 
-See [SecureClaw Demo](examples/secureclaw-demo/README.md) for full instructions.
+See [Integration Demo](examples/integration-demo/README.md) for full instructions.
 
 ---
 
-## Control Plane & Audit Vault
+## Control Plane, Audit Vault & Fleet Management
 
-The Predicate sidecar and SDKs are 100% open-source and free for local development and single-agent deployments.
+The Predicate sidecar and SDKs are 100% open-source (MIT or Apache 2.0) and free for local development and single-agent deployments.
 
-However, when deploying a fleet of AI agents in regulated environments (FinTech, Healthcare, Security), security teams cannot manage scattered YAML files or local SQLite databases. For production fleets, we offer the **Predicate Control Plane** and **Audit Vault**.
+However, when deploying a fleet of AI agents in regulated environments (FinTech, Healthcare, Security), security teams cannot manage scattered YAML/JSON policy files or local SQLite databases. For production fleets, we offer the **Predicate Control Plane** and **Audit Vault**.
 
-<table>
-<tr>
-<td width="50%" align="center">
-<img src="docs/images/overview.png" alt="Control Plane Overview" width="100%">
-<br><em>Real-time dashboard with authorization metrics</em>
-</td>
-<td width="50%" align="center">
-<img src="docs/images/fleet_management.png" alt="Fleet Management" width="100%">
-<br><em>Fleet management across all sidecars</em>
-</td>
-</tr>
-<tr>
-<td width="50%" align="center">
-<img src="docs/images/audit_compliance.png" alt="Audit & Compliance" width="100%">
-<br><em>WORM-ready audit ledger with 7-year retention</em>
-</td>
-<td width="50%" align="center">
-<img src="docs/images/policies.png" alt="Policy Management" width="100%">
-<br><em>Centralized policy editor</em>
-</td>
-</tr>
-<tr>
-<td width="50%" align="center">
-<img src="docs/images/revocations.png" alt="Revocations" width="100%">
-<br><em>Global kill-switches and revocations</em>
-</td>
-<td width="50%" align="center">
-<img src="docs/images/siem_integrations.png" alt="SIEM Integrations" width="100%">
-<br><em>SIEM integrations (Splunk, Datadog, Sentinel)</em>
-</td>
-</tr>
-</table>
+![Audit Vault Demo](docs/images/vault_demo.gif)
 
 **Control Plane Features:**
 
