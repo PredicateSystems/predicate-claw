@@ -1,0 +1,81 @@
+{
+  "rules": [
+    {
+      "name": "allow-internal-tools",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["tool.*"],
+      "resources": ["*"]
+    },
+    {
+      "name": "deny-ssh-keys",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.*"],
+      "resources": ["**/.ssh/*", "**/id_rsa*", "**/id_ed25519*"]
+    },
+    {
+      "name": "deny-env-files",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.*"],
+      "resources": ["**/.env", "**/.env.*", "**/.env.local", "**/credentials*", "**/secrets*"]
+    },
+    {
+      "name": "deny-system-files",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.*"],
+      "resources": ["/etc/*", "/etc/**", "/var/*", "/var/**", "/usr/*", "/usr/**", "/root/*", "/root/**"]
+    },
+    {
+      "name": "deny-dangerous-commands",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["shell.exec"],
+      "resources": ["*rm -rf*", "*sudo*", "*curl*|*bash*", "*curl*|*sh*", "*wget*|*bash*", "*wget*|*sh*", "*chmod 777*", "*dd if=*", "*mkfs*", "*shutdown*", "*reboot*", "*base64*|*bash*", "*base64*|*sh*"]
+    },
+    {
+      "name": "deny-outside-workspace-writes",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["fs.write", "fs.delete", "fs.move"],
+      "resources": ["/tmp/*", "/tmp/**"]
+    },
+    {
+      "name": "deny-insecure-http",
+      "effect": "deny",
+      "principals": ["agent:*"],
+      "actions": ["http.*"],
+      "resources": ["http://*"]
+    },
+    {
+      "name": "allow-workspace-reads",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["fs.read", "fs.list"],
+      "resources": ["**/workspace/**", "**/package.json", "**/tsconfig.json", "**/README.md"]
+    },
+    {
+      "name": "allow-workspace-writes",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["fs.write"],
+      "resources": ["**/workspace/output/**", "**/workspace/temp/**"]
+    },
+    {
+      "name": "allow-safe-shell",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["shell.exec"],
+      "resources": ["ls *", "cat *", "grep *", "echo *", "pwd", "whoami", "date", "npm test", "npm run *", "node *"]
+    },
+    {
+      "name": "allow-https-requests",
+      "effect": "allow",
+      "principals": ["agent:*"],
+      "actions": ["http.request"],
+      "resources": ["https://api.github.com/*", "https://api.example.com/*", "https://httpbin.org/*"]
+    }
+  ]
+}

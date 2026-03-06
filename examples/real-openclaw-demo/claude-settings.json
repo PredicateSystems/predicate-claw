@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/app/secureclaw-hook.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

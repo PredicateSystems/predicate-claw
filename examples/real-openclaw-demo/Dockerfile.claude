@@ -1,0 +1,57 @@
+# Real Claude Code Demo - Agent Container with Predicate Authority
+#
+# Installs Claude Code CLI with predicate-claw security plugin
+# Uses Anthropic Claude API for real LLM calls
+
+FROM node:22-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    jq \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the entire SDK for building
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY src/ ./src/
+
+# Install dependencies and build SDK
+RUN npm install && npm run build
+
+# Install Claude Code CLI globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Create a non-root user for running Claude Code
+# (--dangerously-skip-permissions cannot run as root)
+RUN useradd -m -s /bin/bash demouser
+
+# Create directories with proper permissions
+RUN mkdir -p /workspace && chown -R demouser:demouser /workspace
+RUN mkdir -p /home/demouser/.claude && chown -R demouser:demouser /home/demouser/.claude
+
+# Copy demo workspace files
+COPY --chown=demouser:demouser examples/real-openclaw-demo/workspace/ /workspace/
+
+# Copy the SecureClaw hook script
+COPY --chown=demouser:demouser examples/real-openclaw-demo/secureclaw-hook.sh /app/secureclaw-hook.sh
+RUN chmod +x /app/secureclaw-hook.sh
+
+# Copy Claude Code settings with PreToolUse hook configuration
+COPY --chown=demouser:demouser examples/real-openclaw-demo/claude-settings.json /home/demouser/.claude/settings.json
+
+# Switch to non-root user
+USER demouser
+
+# Set working directory to workspace
+WORKDIR /workspace
+
+# Environment variables
+ENV HOME=/home/demouser
+
+# Default: interactive shell (use docker compose run to execute commands)
+CMD ["bash"]

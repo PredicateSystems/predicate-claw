@@ -1,0 +1,28 @@
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+src/node_modules/
+
+# Build artifacts
+dist/
+*.js
+*.d.ts
+*.js.map
+
+# Demo output files
+workspace/output/*
+!workspace/output/.gitkeep
+workspace/temp/*
+!workspace/temp/.gitkeep
+
+# Recording files
+*.cast
+*.gif
+
+# Sidecar binary (download from releases)
+predicate-authorityd
+predicate-authorityd.tar.gz

@@ -10,6 +10,7 @@
 import { GuardedProvider, ActionDeniedError, SidecarUnavailableError } from "./provider.js";
 import type { GuardRequest, GuardTelemetry, DecisionTelemetryEvent, DecisionAuditExporter } from "./provider.js";
 import crypto from "node:crypto";
+import path from "node:path";
 
 // =============================================================================
 // Configuration
@@ -174,11 +175,40 @@ export function extractResource(toolName: string, params: Record<string, unknown
   }
 }
 
+/**
+ * Normalize a file path to prevent path traversal attacks.
+ * Resolves relative paths, removes . and .. components, and handles ~ expansion.
+ */
+export function normalizePath(filePath: string): string {
+  if (!filePath || filePath === "file:unknown") {
+    return filePath;
+  }
+
+  // Expand ~ to home directory
+  let normalized = filePath;
+  if (normalized.startsWith("~/")) {
+    const home = process.env.HOME || process.env.USERPROFILE || "/";
+    normalized = path.join(home, normalized.slice(2));
+  } else if (normalized === "~") {
+    normalized = process.env.HOME || process.env.USERPROFILE || "/";
+  }
+
+  // Resolve to absolute path (handles . and .. components)
+  // path.resolve will make relative paths absolute based on cwd
+  normalized = path.resolve(normalized);
+
+  // Normalize the path (removes redundant slashes, etc.)
+  normalized = path.normalize(normalized);
+
+  return normalized;
+}
+
 function extractFilePath(params: Record<string, unknown>): string {
   const pathKeys = ["file_path", "filePath", "path", "file", "filename"];
   for (const key of pathKeys) {
     if (typeof params[key] === "string") {
-      return params[key];
+      // Normalize the path to prevent path traversal attacks
+      return normalizePath(params[key]);
     }
   }
   return "file:unknown";
