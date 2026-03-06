@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  # Predicate Authority Sidecar - Authorization Engine (Rust-based)
+  # Builds from Dockerfile.sidecar which downloads binary from GitHub releases
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile.sidecar
+    ports:
+      - "8787:8787"
+    environment:
+      LOCAL_IDP_SIGNING_KEY: "demo-secret-key-replace-in-production-minimum-32-chars"
+    volumes:
+      - ./policy.json:/etc/predicate/policy.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8787/health || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+    networks:
+      - demo-net
+
+  # Demo Agent - REAL Sidecar Authorization with Simulated Tool Execution
+  # Makes real HTTP calls to Predicate Authority sidecar for authorization decisions
+  # No LLM API credits required - focuses on demonstrating the authorization flow
+  demo-agent:
+    build:
+      context: ../..
+      dockerfile: examples/real-openclaw-demo/Dockerfile
+    depends_on:
+      sidecar:
+        condition: service_healthy
+    environment:
+      # Predicate Authority Sidecar
+      PREDICATE_SIDECAR_URL: http://sidecar:8787
+      SECURECLAW_VERBOSE: "true"
+      SECURECLAW_PRINCIPAL: "agent:demo"
+    volumes:
+      - ./workspace:/workspace:rw
+      - ./policy.json:/app/policy.json:ro
+    working_dir: /app
+    networks:
+      - demo-net
+    tty: true
+
+networks:
+  demo-net:
+    driver: bridge
