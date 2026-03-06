@@ -47,6 +47,10 @@ npm install predicate-claw
 
 **Right pane:** The integration demo using the real `createSecureClawPlugin()` SDK—legitimate file reads succeed, while sensitive file access, dangerous shell commands, and prompt injection attacks are blocked before execution.
 
+### Real Claude Code Integration
+
+We also provide a **real Claude Code demo** that uses actual Anthropic API calls with SecureClaw hooks intercepting every tool call. See the [Real OpenClaw Demo](examples/real-openclaw-demo/README.md) for instructions.
+
 ---
 
 ## How It Works
@@ -286,6 +290,30 @@ npm run build      # Build
 ```
 
 ### Run the Demo
+
+#### Real Claude Code Demo (Recommended)
+
+Uses **real Anthropic Claude API** with SecureClaw authorization:
+
+```bash
+cd examples/real-openclaw-demo
+
+# Set your API key
+echo "ANTHROPIC_API_KEY=your-key-here" > .env
+
+# Start sidecar + Claude Code
+docker compose -f docker-compose.claude.yml up -d
+docker compose -f docker-compose.claude.yml run claude-agent claude --dangerously-skip-permissions
+```
+
+Try these prompts to see authorization in action:
+- `"Read /workspace/src/config.ts"` → **Allowed**
+- `"Read /workspace/.env.example"` → **Blocked** by `deny-env-files`
+- `"Run sudo ls"` → **Blocked** by `deny-dangerous-commands`
+
+See [Real OpenClaw Demo](examples/real-openclaw-demo/README.md) for full instructions.
+
+#### Simulated Demo (No API Key Required)
 
 ```bash
 cd examples/integration-demo
