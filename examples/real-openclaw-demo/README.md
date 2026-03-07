@@ -1,6 +1,8 @@
 # Zero-Trust AI Agent Playground
 
-A complete demonstration of **production-ready AI agent architecture** with Pre-Execution Authorization, Post-Execution Verification, and Cloud Tracing.
+A complete demonstration of **production-ready AI agent architecture** with Pre-Execution Authorization, Post-Execution Deterministic Verification (not LLM), and Cloud Tracing.
+
+![Zero-Trust Agent Demo](../../docs/images/openclaw_complete_loop_demo_s.gif)
 
 ## Overview
 
