@@ -53,6 +53,7 @@ import {
   backends,
   type Snapshot,
   type LLMResponse,
+  type SnapshotOptions,
 } from "@predicatesystems/runtime";
 import { PredicateSidecarClient, createPredicateClient } from "./predicate-sidecar-client.js";
 import {
@@ -157,6 +158,12 @@ interface Lead {
   url: string;
   points: number;
   timestamp: string;
+}
+
+// Extended Snapshot type with text property for LLM use
+// The promptBlock from PredicateContext is stored here
+interface SnapshotWithText extends Snapshot {
+  text?: string;
 }
 
 // ============================================================================
@@ -267,8 +274,19 @@ class MarketResearchAgent {
   /**
    * Take ML-enhanced snapshot using PredicateContext (predicate-snapshot skill pattern)
    * This uses CDP directly and doesn't require the Chrome extension
+   *
+   * @param options - SnapshotOptions for screenshot, use_api, etc.
+   * @returns SnapshotWithText - Snapshot with text property for LLM use
    */
-  private async takeMLSnapshot(): Promise<Snapshot> {
+  private async takeMLSnapshot(options: SnapshotOptions = {}): Promise<SnapshotWithText> {
+    // Default options for cloud tracing: include screenshot
+    const snapshotOptions: SnapshotOptions = {
+      screenshot: options.screenshot ?? { format: "jpeg", quality: 80 },
+      use_api: options.use_api ?? true,
+      limit: options.limit ?? 50,
+      ...options,
+    };
+
     if (this.predicateContext && this.browserSession) {
       try {
         const result = await this.predicateContext.build(this.browserSession);
@@ -283,9 +301,22 @@ class MarketResearchAgent {
         }
 
         // Return the snapshot from result, with text set to promptBlock for LLM use
-        const snapshot: Snapshot = {
+        // Also take a screenshot using PredicateBrowser if requested
+        let screenshotData: string | undefined;
+        if (snapshotOptions.screenshot && this.predicateBrowser) {
+          try {
+            const browserSnap = await this.predicateBrowser.snapshot(snapshotOptions);
+            screenshotData = browserSnap.screenshot;
+          } catch {
+            // Screenshot is optional - continue without it
+          }
+        }
+
+        const snapshot: SnapshotWithText = {
           ...result.snapshot,
-          text: result.promptBlock || result.snapshot.text || "",
+          text: result.promptBlock || "",
+          screenshot: screenshotData,
+          screenshot_format: screenshotData ? "jpeg" : undefined,
         };
 
         return snapshot;
@@ -294,9 +325,14 @@ class MarketResearchAgent {
       }
     }
 
-    // Fallback to PredicateBrowser snapshot (local, no ML)
+    // Fallback to PredicateBrowser snapshot (local, no ML) with screenshot options
     if (this.predicateBrowser) {
-      return await this.predicateBrowser.snapshot();
+      const snap = await this.predicateBrowser.snapshot(snapshotOptions);
+      // Convert elements to text for LLM use
+      const text = snap.elements?.map((el: { text?: string; aria_label?: string }) =>
+        el.text || el.aria_label || ""
+      ).filter(Boolean).join("\n") || "";
+      return { ...snap, text };
     }
 
     throw new Error("No snapshot method available");
@@ -389,7 +425,8 @@ class MarketResearchAgent {
         // STEP 7: Save to CSV (Pre-Execution Gate)
         // ==================================================================
         logStep(7, "Saving leads to CSV (Pre-Execution Gate)");
-        await this.saveLeadsToCSV(newLeads);
+        // Pass current leads + existing leads for deduplication and merge
+        await this.saveLeadsToCSV(leads, existingLeads);
       }
 
       // ======================================================================
@@ -510,9 +547,10 @@ class MarketResearchAgent {
 
     // Create browser adapter for AgentRuntime
     // Use ML-enhanced snapshot if available, otherwise fall back to PredicateBrowser
+    // Pass through SnapshotOptions for screenshot, use_api, etc.
     const browserAdapter = {
-      snapshot: async (_page: Page, options?: Record<string, unknown>): Promise<Snapshot> => {
-        return await this.takeMLSnapshot();
+      snapshot: async (_page: Page, options?: SnapshotOptions): Promise<Snapshot> => {
+        return await this.takeMLSnapshot(options);
       },
     };
 
@@ -596,17 +634,24 @@ Respond with JSON: {"isShowHN": true/false, "reason": "brief explanation"}`,
       throw new Error("Browser not initialized");
     }
 
-    logInfo("Taking ML-enhanced snapshot for verification...");
+    // Start step tracking for telemetry BEFORE taking snapshot
+    this.agentRuntime.beginStep("verify_page_state", 3);
 
-    const snapshot: Snapshot = await this.takeMLSnapshot();
-    logInfo(`Snapshot captured: ${snapshot.text?.length || 0} chars of accessible text`);
+    logInfo("Taking ML-enhanced snapshot with screenshot for verification...");
+
+    // Use agentRuntime.snapshot() which auto-emits trace events with screenshot
+    // This enables Studio visualization with screenshot_base64
+    const snapshot: Snapshot = await this.agentRuntime.snapshot({
+      screenshot: { format: "jpeg", quality: 80 },
+      use_api: true,
+      limit: 50,
+      emitTrace: true, // Auto-emit snapshot trace event for Studio
+    });
+    logInfo(`Snapshot captured: ${snapshot.elements?.length || 0} elements, screenshot: ${snapshot.screenshot ? "yes" : "no"}`);
 
     // Use SDK predicates with .eventually() for delayed hydration handling
     // This is the recommended pattern from predicate-snapshot skill
     logInfo("Waiting for page content to hydrate using SDK predicates...");
-
-    // Start step tracking for telemetry
-    this.agentRuntime.beginStep("verify_page_state", 3);
 
     // Verify URL contains expected domain using .eventually()
     const urlValid = await this.agentRuntime.check(
@@ -850,10 +895,13 @@ IMPORTANT:
 
   /**
    * STEP 6: Find New Leads
+   * Compare by URL (more stable than titles, which LLMs may truncate)
    */
   private findNewLeads(current: Lead[], existing: Lead[]): Lead[] {
-    const existingTitles = new Set(existing.slice(0, CONFIG.topN).map((l) => l.title));
-    return current.filter((lead) => !existingTitles.has(lead.title));
+    // Normalize URLs for comparison (remove trailing slashes, etc.)
+    const normalizeUrl = (url: string) => url.replace(/\/+$/, "").toLowerCase();
+    const existingUrls = new Set(existing.map((l) => normalizeUrl(l.url)));
+    return current.filter((lead) => !existingUrls.has(normalizeUrl(lead.url)));
   }
 
   /**
@@ -863,18 +911,46 @@ IMPORTANT:
    * 1. Request authorization from sidecar via /authorize
    * 2. If ALLOWED, execute locally (sidecar is authorize-only mode)
    * 3. If DENIED or sidecar unavailable, FAIL CLOSED - no fallback
+   *
+   * NOTE: This writes the full file (not append) to avoid duplicates.
+   * New leads are merged with existing leads, deduplicated by URL.
    */
-  private async saveLeadsToCSV(leads: Lead[]): Promise<void> {
-    logInfo(`Writing ${leads.length} lead(s) to ${CONFIG.leadsFile}...`);
+  private async saveLeadsToCSV(newLeads: Lead[], existingLeads: Lead[] = []): Promise<void> {
+    // Merge new leads with existing, keeping new leads first (they're the current top N)
+    // Deduplicate by URL
+    const normalizeUrl = (url: string) => url.replace(/\/+$/, "").toLowerCase();
+    const seenUrls = new Set<string>();
+    const allLeads: Lead[] = [];
 
-    const rows = leads.map((l) =>
+    // Add new leads first
+    for (const lead of newLeads) {
+      const normUrl = normalizeUrl(lead.url);
+      if (!seenUrls.has(normUrl)) {
+        seenUrls.add(normUrl);
+        allLeads.push(lead);
+      }
+    }
+
+    // Add existing leads that aren't duplicates
+    for (const lead of existingLeads) {
+      const normUrl = normalizeUrl(lead.url);
+      if (!seenUrls.has(normUrl)) {
+        seenUrls.add(normUrl);
+        allLeads.push(lead);
+      }
+    }
+
+    logInfo(`Writing ${allLeads.length} total lead(s) to ${CONFIG.leadsFile} (${newLeads.length} new)...`);
+
+    // Format CSV with header
+    const header = "rank,title,url,points,timestamp";
+    const rows = allLeads.map((l) =>
       `${l.rank},"${l.title.replace(/"/g, '""')}","${l.url}",${l.points},${l.timestamp}`
     );
-
-    const csvContent = rows.join("\n") + "\n";
+    const csvContent = header + "\n" + rows.join("\n") + "\n";
 
     // Step 1: Request authorization from sidecar
-    const authResult = await this.sidecar.appendFile(CONFIG.leadsFile, csvContent);
+    const authResult = await this.sidecar.writeFile(CONFIG.leadsFile, csvContent);
 
     // Step 2: Check authorization result - FAIL CLOSED
     if (!authResult.allowed) {
@@ -890,8 +966,8 @@ IMPORTANT:
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.appendFileSync(CONFIG.leadsFile, csvContent);
-      logSuccess(`Saved ${leads.length} lead(s) to CSV`);
+      fs.writeFileSync(CONFIG.leadsFile, csvContent);
+      logSuccess(`Saved ${allLeads.length} lead(s) to CSV`);
     } catch (err) {
       throw new Error(`File write failed after authorization: ${(err as Error).message}`);
     }
