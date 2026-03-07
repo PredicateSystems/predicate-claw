@@ -41,14 +41,13 @@ import type { Page } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import * as crypto from "crypto";
 import {
   PredicateBrowser,
   SentienceAgent,
   AnthropicProvider,
   AgentRuntime,
   Tracer,
-  JsonlTraceSink,
+  createTracer,
   exists,
   urlContains,
   backends,
@@ -304,48 +303,21 @@ class MarketResearchAgent {
   }
 
   /**
-   * Initialize tracer
-   * Uses Cloud tracing if PREDICATE_API_KEY is set, otherwise local JsonlTraceSink
+   * Initialize tracer using SDK's createTracer factory
+   * Automatically handles Cloud vs Local tracing based on PREDICATE_API_KEY
    */
   private async initializeTracer(): Promise<void> {
-    const runId = crypto.randomUUID();
+    // Use SDK's createTracer which handles cloud init, fallback, and run_start emission
+    this.tracer = await createTracer({
+      apiKey: CONFIG.predicateApiKey || undefined,
+      goal: `Extract top ${CONFIG.topN} posts from Hacker News`,
+      agentType: "MarketResearchAgent",
+      llmModel: CONFIG.llmModel,
+      startUrl: CONFIG.targetUrl,
+      autoEmitRunStart: true, // SDK auto-emits run_start with metadata
+    });
 
-    if (CONFIG.predicateApiKey) {
-      // Cloud tracing: Use Predicate API for cloud upload
-      // Note: For full cloud support, the SDK needs to export createTracer
-      // For now, we'll use local tracing with a note about cloud support
-      logInfo("PREDICATE_API_KEY set - Cloud tracing would be enabled");
-      logInfo("(Full cloud support requires SDK export of createTracer)");
-
-      // Fall back to local tracing for now
-      const tracesDir = path.join(process.cwd(), "traces");
-      if (!fs.existsSync(tracesDir)) {
-        fs.mkdirSync(tracesDir, { recursive: true });
-      }
-      const localPath = path.join(tracesDir, `${runId}.jsonl`);
-      this.tracer = new Tracer(runId, new JsonlTraceSink(localPath));
-      logInfo(`Local trace file: ${localPath}`);
-    } else {
-      // Local tracing: Save traces to ./traces/ directory
-      const tracesDir = path.join(process.cwd(), "traces");
-      if (!fs.existsSync(tracesDir)) {
-        fs.mkdirSync(tracesDir, { recursive: true });
-      }
-      const localPath = path.join(tracesDir, `${runId}.jsonl`);
-      this.tracer = new Tracer(runId, new JsonlTraceSink(localPath));
-      logInfo(`Local tracing enabled (PREDICATE_API_KEY not set)`);
-      logInfo(`Trace file: ${localPath}`);
-    }
-
-    // Emit run_start event for complete trace structure
-    this.tracer.emitRunStart(
-      "MarketResearchAgent",
-      CONFIG.llmModel,
-      {
-        goal: `Extract top ${CONFIG.topN} posts from Hacker News`,
-        start_url: CONFIG.targetUrl,
-      }
-    );
+    logSuccess(`Tracer initialized (Run ID: ${this.tracer.runId})`);
   }
 
   // --------------------------------------------------------------------------
@@ -473,7 +445,7 @@ class MarketResearchAgent {
    * - Policy: allow-browser-launch (requires headless: true)
    *
    * Initializes:
-   * - SentienceBrowser with Chrome extension for ML-enhanced snapshots
+   * - PredicateBrowser with Chrome extension for ML-enhanced snapshots
    * - SentienceAgent with AnthropicProvider for LLM-driven automation
    */
   private async launchBrowser(): Promise<void> {

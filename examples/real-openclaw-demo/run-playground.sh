@@ -55,7 +55,7 @@ echo "║          AI AGENT PLAYGROUND - Zero-Trust Demo                        
 echo "║                                                                           ║"
 echo "║   Pre-Execution:  Predicate Sidecar (Policy Enforcement)                  ║"
 echo "║   Post-Execution: Predicate Runtime (State Verification)                  ║"
-echo "║   Browser:        SentienceBrowser (ML-Enhanced Snapshots)                ║"
+echo "║   Browser:        PredicateBrowser (ML-Enhanced Snapshots)                ║"
 echo "║                                                                           ║"
 echo "╚═══════════════════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"

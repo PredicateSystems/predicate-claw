@@ -1,3 +1,35 @@
+Use 'docker scan' to run Snyk tests against images to find vulnerabilities and learn how to fix them
+Starting Predicate Sidecar...
+[+] Running 0/1
+ ⠹ Network real-openclaw-demo_playground-net  Creating                                                                                                                              0.3s
+[+] Running 2/2d orphan containers ([real-openclaw-demo_claude-agent_run_8d673df6c118 real-openclaw-demo_claude-agent_1 real-openclaw-demo_sidecar_1]) for this project. If you removed o
+ ⠿ Network real-openclaw-demo_playground-net         Created                                                                                                                        0.3s
+ ⠿ Container real-openclaw-demo_predicate-sidecar_1  Started                                                                                                                        0.6s
+Waiting for sidecar health check...
+Sidecar is healthy!
+Running Market Research Agent...
+
+WARN[0000] Found orphan containers ([real-openclaw-demo_claude-agent_run_8d673df6c118 real-openclaw-demo_claude-agent_1 real-openclaw-demo_sidecar_1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up. 
+[+] Running 1/0
+ ⠿ Container real-openclaw-demo_predicate-sidecar_1  Running                                                                                                                        0.0s
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║   ██████╗ ██████╗ ███████╗██████╗ ██╗ ██████╗ █████╗ ████████╗███████╗   ║
+║   ██╔══██╗██╔══██╗██╔════╝██╔══██╗██║██╔════╝██╔══██╗╚══██╔══╝██╔════╝   ║
+║   ██████╔╝██████╔╝█████╗  ██║  ██║██║██║     ███████║   ██║   █████╗     ║
+║   ██╔═══╝ ██╔══██╗██╔══╝  ██║  ██║██║██║     ██╔══██║   ██║   ██╔══╝     ║
+║   ██║     ██║  ██║███████╗██████╔╝██║╚██████╗██║  ██║   ██║   ███████╗   ║
+║   ╚═╝     ╚═╝  ╚═╝╚══════╝╚═════╝ ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝   ║
+║                                                                           ║
+║   Zero-Trust AI Agent with Claude LLM                                     ║
+║   Pre-Execution Gate + Post-Execution Verification                        ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+  → LLM Provider initialized: claude-sonnet-4-20250514
+
 ══════════════════════════════════════════════════════════════════════
 ║ MARKET RESEARCH AGENT - Zero-Trust Demo with LLM
 ══════════════════════════════════════════════════════════════════════
@@ -11,14 +43,13 @@ Configuration:
   Headless:  true
 
   → Initializing tracer...
-  → PREDICATE_API_KEY set - Cloud tracing would be enabled
-  → (Full cloud support requires SDK export of createTracer)
-  → Local trace file: /app/traces/9204faf1-f48e-408d-ba91-f5668908f206.jsonl
+(node:31) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+☁️  [Sentience] Cloud tracing enabled (Pro tier)
+  ✓ Tracer initialized (Run ID: d23856ba-5e51-4305-b0dc-0d1def17547b)
 [Step 1] Launching headless browser with LLM agent
   → Requesting browser launch through Pre-Execution Gate...
 [PredicateSidecar] [PRE-EXEC] Authorizing: browser.launch on *
-(node:31) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `node --trace-deprecation ...` to show where the warning was created)
 [PredicateSidecar] [PRE-EXEC] ✓ ALLOWED: browser.launch
   ✓ Browser launch AUTHORIZED by policy
   → ML-enhanced snapshots enabled (PREDICATE_API_KEY set)
@@ -81,7 +112,7 @@ Sentience extension ready after 0ms
 Formatted 19 elements (top 50 by importance + top 15 from dominant group + top 10 by position)
 SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
   🤖 Sending extraction request to Claude...
-  🤖 LLM used 758 tokens for extraction
+  🤖 LLM used 756 tokens for extraction
   ✓ #1: "Show HN: Moongate – Ultima ......" (0 points)
 [Step 5] Loading existing leads from CSV
   → Reading existing leads from /data/leads.csv...
@@ -99,11 +130,11 @@ SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
 │  PRE-EXECUTION: ALLOWED                                │
 ├──────────────────────────────────────────────────────────┤
 │ Action:   fs.read                                        │
-│ Duration: 2ms                                            │
+│ Duration: 8ms                                            │
 └──────────────────────────────────────────────────────────┘
 
   ✓ File read AUTHORIZED by policy
-  ✓ Loaded 6 existing lead(s)
+  ✓ Loaded 8 existing lead(s)
 [Step 6] Checking for new/changed leads
   ✓ Found 1 new lead(s)!
 [Step 7] Saving leads to CSV (Pre-Execution Gate)
@@ -156,15 +187,15 @@ SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
 
 Token Usage (LLM calls):
   Prompt tokens:     1206
-  Completion tokens: 207
-  Total tokens:      1413
+  Completion tokens: 205
+  Total tokens:      1411
 Tracer:
-  Run ID: 9204faf1-f48e-408d-ba91-f5668908f206
+  Run ID: d23856ba-5e51-4305-b0dc-0d1def17547b
   Mode: Cloud (uploaded to Predicate Studio)
 
 Stopping containers...
 [+] Running 2/2
- ⠿ Container real-openclaw-demo_predicate-sidecar_1  Removed                                                                                                                        0.2s
+ ⠿ Container real-openclaw-demo_predicate-sidecar_1  Removed                                                                                                                        0.3s
  ⠿ Network real-openclaw-demo_playground-net         Removed                                                                                                                        0.2s
 
 Done! Check data/leads.csv for extracted leads.
