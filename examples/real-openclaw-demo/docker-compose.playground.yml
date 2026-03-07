@@ -1,0 +1,104 @@
+version: "3.8"
+
+# ============================================================================
+# AI Agent Playground Infrastructure
+# ============================================================================
+#
+# Zero-Trust Architecture:
+# - agent-runtime: Node.js + Playwright + SDK (NO ambient OS privileges)
+# - predicate-sidecar: Rust-based RTA execution proxy
+#
+# The agent CANNOT access files, network, or system directly.
+# All operations are proxied through the sidecar's /v1/execute endpoint.
+#
+# Usage:
+#   # Start infrastructure
+#   docker compose -f docker-compose.playground.yml up -d
+#
+#   # Run market research agent
+#   docker compose -f docker-compose.playground.yml exec agent-runtime \
+#     npx tsx /app/examples/real-openclaw-demo/src/market-research-agent.ts
+#
+#   # Interactive shell
+#   docker compose -f docker-compose.playground.yml exec agent-runtime bash
+
+services:
+  # =========================================================================
+  # Predicate Authority Sidecar - Run Time Assurance (RTA) Execution Proxy
+  # =========================================================================
+  predicate-sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile.sidecar
+    ports:
+      - "8000:8000"
+    environment:
+      # Demo signing key (replace in production)
+      LOCAL_IDP_SIGNING_KEY: "demo-secret-key-replace-in-production-minimum-32-chars"
+    volumes:
+      # Mount policy file (YAML or JSON supported)
+      - ./policy.yaml:/app/policy.yaml:ro
+      # Mount data directory so sidecar can execute fs.write on agent's behalf
+      - ./data:/data:rw
+    command: >
+      predicate-authorityd
+      --host 0.0.0.0
+      --port 8000
+      --mode local_only
+      --policy-file /app/policy.yaml
+      --log-level info
+      run
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+    networks:
+      - playground-net
+
+  # =========================================================================
+  # Agent Runtime - Node.js + Playwright (Zero Ambient Privileges)
+  # =========================================================================
+  agent-runtime:
+    build:
+      context: ../..
+      dockerfile: examples/real-openclaw-demo/Dockerfile.playground
+    depends_on:
+      predicate-sidecar:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Predicate Authority Sidecar connection
+      PREDICATE_SIDECAR_URL: http://predicate-sidecar:8000
+      SECURECLAW_PRINCIPAL: "agent:market-research"
+      SECURECLAW_VERBOSE: "true"
+
+      # Playwright configuration (for SentienceBrowser)
+      PLAYWRIGHT_BROWSERS_PATH: /home/agentuser/.cache/ms-playwright
+
+      # Node.js settings
+      NODE_ENV: development
+    volumes:
+      # Output directory for verification artifacts, screenshots, etc.
+      # NOTE: Agent cannot write here directly - goes through sidecar
+      - ./data:/data:rw
+
+      # Working directory for agent tasks
+      - ./workspace:/workspace:rw
+
+      # Mount agent source for hot-reloading during development
+      - ./src:/app/examples/real-openclaw-demo/src:ro
+    working_dir: /app
+    networks:
+      - playground-net
+    # Enable interactive mode
+    tty: true
+    stdin_open: true
+    # Default command: run the market research agent
+    command: ["npx", "tsx", "/app/examples/real-openclaw-demo/src/market-research-agent.ts"]
+
+networks:
+  playground-net:
+    driver: bridge

@@ -32,7 +32,10 @@
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "dependencies": {
-    "@predicatesystems/authority": "^0.4.1"
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@predicatesystems/authority": "^0.4.1",
+    "@predicatesystems/runtime": "^1.2.0",
+    "playwright": "^1.40.0"
   },
   "peerDependencies": {
     "openclaw": ">=2026.2.0"

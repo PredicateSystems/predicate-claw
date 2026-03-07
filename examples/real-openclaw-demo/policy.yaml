@@ -1,0 +1,369 @@
+# ============================================================================
+# Predicate Authority Policy - Zero-Trust RTA Configuration
+# ============================================================================
+#
+# SCENARIO: Market Research Agent
+#
+# This policy implements a default-deny, least-privilege posture for an AI
+# agent performing market research tasks. The agent has ZERO ambient OS
+# privileges - all actions are proxied through the sidecar's /v1/execute
+# endpoint after policy evaluation.
+#
+# ARCHITECTURE:
+#   ┌─────────────┐     JSON Intent      ┌─────────────────┐
+#   │   Agent     │ ─────────────────────▶│ Predicate       │
+#   │  (No OS     │                       │ Sidecar         │
+#   │  Privileges)│ ◀─────────────────────│ (RTA Proxy)     │
+#   └─────────────┘   Result / Denial     └────────┬────────┘
+#                                                  │
+#                                         Policy   │  Execute
+#                                         Check    ▼  (if allowed)
+#                                         ┌─────────────────┐
+#                                         │  OS / Network   │
+#                                         └─────────────────┘
+#
+# ACTIONS:
+#   http.fetch      - HTTP/HTTPS requests to external APIs
+#   fs.read         - Read files from filesystem
+#   fs.write        - Write files to filesystem
+#   fs.list         - List directory contents
+#   browser.launch  - Launch headless Playwright browser
+#   browser.navigate- Navigate browser to URL
+#   browser.action  - Perform browser actions (click, type, etc.)
+#   browser.close   - Close browser instance
+#   shell.exec      - Execute shell commands (heavily restricted)
+#   tool.*          - Internal agent tools (e.g., ToolSearch)
+#
+# ============================================================================
+
+version: "1.0"
+
+# Metadata for audit and compliance
+metadata:
+  scenario: "market-research"
+  author: "security-team"
+  last_updated: "2024-03-06"
+  compliance: ["SOC2", "GDPR"]
+  default_posture: "deny"
+
+# ============================================================================
+# DENY RULES - Explicit blocks (evaluated first, highest priority)
+# ============================================================================
+
+rules:
+
+  # --------------------------------------------------------------------------
+  # FILESYSTEM DENY RULES
+  # --------------------------------------------------------------------------
+
+  # Block ALL reads to sensitive system files
+  - name: deny-system-files-read
+    description: "Block access to sensitive system configuration files"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read", "fs.list"]
+    resources:
+      # Unix system files
+      - "/etc/passwd"
+      - "/etc/shadow"
+      - "/etc/sudoers"
+      - "/etc/hosts"
+      - "/etc/ssl/**"
+      - "/etc/ssh/**"
+      # Proc and sys virtual filesystems
+      - "/proc/**"
+      - "/sys/**"
+      # Root home directory
+      - "/root/**"
+
+  # Block ALL access to hidden files (dotfiles)
+  - name: deny-hidden-files
+    description: "Block access to hidden files which may contain secrets"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read", "fs.write", "fs.list"]
+    resources:
+      # Hidden files anywhere in filesystem
+      - "**/.*"
+      - "**/.env"
+      - "**/.env.*"
+      - "**/.git/**"
+      - "**/.ssh/**"
+      - "**/.aws/**"
+      - "**/.config/**"
+      - "**/.npmrc"
+      - "**/.netrc"
+
+  # Block access to credential and secret files by name pattern
+  - name: deny-credential-files
+    description: "Block files that commonly contain credentials"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read"]
+    resources:
+      - "**/credentials*"
+      - "**/secrets*"
+      - "**/password*"
+      - "**/token*"
+      - "**/*_rsa"
+      - "**/*_rsa.pub"
+      - "**/*_ed25519"
+      - "**/id_*"
+      - "**/known_hosts"
+      - "**/authorized_keys"
+
+  # Block writes to ANY location except explicitly allowed
+  - name: deny-unauthorized-writes
+    description: "Default deny all filesystem writes"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.write"]
+    resources:
+      # Block everything except /data/leads.csv (allowed below)
+      - "/bin/**"
+      - "/sbin/**"
+      - "/usr/**"
+      - "/lib/**"
+      - "/var/**"
+      - "/tmp/**"
+      - "/opt/**"
+      - "/etc/**"
+      - "/root/**"
+      - "/home/**"
+
+  # --------------------------------------------------------------------------
+  # HTTP/NETWORK DENY RULES
+  # --------------------------------------------------------------------------
+
+  # Block insecure HTTP (require HTTPS)
+  - name: deny-insecure-http
+    description: "Block plaintext HTTP requests - HTTPS required"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["http.fetch"]
+    resources:
+      - "http://**"
+
+  # Block requests to internal/private networks
+  - name: deny-internal-networks
+    description: "Block SSRF attempts to internal infrastructure"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["http.fetch"]
+    resources:
+      # Localhost
+      - "https://localhost/**"
+      - "https://127.0.0.1/**"
+      - "https://[::1]/**"
+      # Private IPv4 ranges
+      - "https://10.*/**"
+      - "https://172.16.*/**"
+      - "https://172.17.*/**"
+      - "https://172.18.*/**"
+      - "https://172.19.*/**"
+      - "https://172.2?.*/**"
+      - "https://172.30.*/**"
+      - "https://172.31.*/**"
+      - "https://192.168.*/**"
+      # Cloud metadata endpoints
+      - "https://169.254.169.254/**"
+      - "https://metadata.google.internal/**"
+
+  # Block dangerous shell commands
+  - name: deny-dangerous-shell
+    description: "Block shell commands that could compromise the system"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["shell.exec"]
+    resources:
+      - "*sudo*"
+      - "*su *"
+      - "*rm -rf*"
+      - "*rm -r /*"
+      - "*mkfs*"
+      - "*dd if=*"
+      - "*curl*|*bash*"
+      - "*curl*|*sh*"
+      - "*wget*|*bash*"
+      - "*wget*|*sh*"
+      - "*chmod 777*"
+      - "*chmod +s*"
+      - "*chown root*"
+      - "*> /etc/*"
+      - "*>> /etc/*"
+      - "*eval*"
+      - "*base64*-d*|*sh*"
+      - "*nc -e*"
+      - "*netcat -e*"
+      - "*python*-c*import*socket*"
+
+# ============================================================================
+# ALLOW RULES - Explicit grants (evaluated after deny rules)
+# ============================================================================
+
+  # --------------------------------------------------------------------------
+  # HTTP/API ALLOW RULES (Market Research Scenario)
+  # --------------------------------------------------------------------------
+
+  # Allow: Google Sheets API for storing research data
+  - name: allow-google-sheets-api
+    description: "Allow API calls to Google Sheets for data storage"
+    effect: allow
+    principals: ["agent:market-research", "agent:playground"]
+    actions: ["http.fetch"]
+    resources:
+      - "https://sheets.googleapis.com/**"
+      - "https://www.googleapis.com/auth/**"
+      - "https://oauth2.googleapis.com/**"
+
+  # Allow: Specific webhook URL for data export
+  - name: allow-webhook-export
+    description: "Allow data export to designated webhook endpoint"
+    effect: allow
+    principals: ["agent:market-research", "agent:playground"]
+    actions: ["http.fetch"]
+    resources:
+      # Replace with your actual webhook URL
+      - "https://hooks.zapier.com/hooks/catch/**"
+      - "https://webhook.site/**"
+      - "https://api.example.com/leads/**"
+
+  # Allow: Browser navigation to research target sites
+  - name: allow-research-sites
+    description: "Allow browser navigation to legitimate research sites"
+    effect: allow
+    principals: ["agent:market-research", "agent:playground"]
+    actions: ["http.fetch"]
+    resources:
+      # Search engines for market research
+      - "https://www.google.com/**"
+      - "https://www.bing.com/**"
+      - "https://duckduckgo.com/**"
+      # Business directories
+      - "https://www.linkedin.com/**"
+      - "https://www.crunchbase.com/**"
+      - "https://www.zoominfo.com/**"
+      # General HTTPS for research (can be tightened further)
+      - "https://*.com/**"
+      - "https://*.io/**"
+      - "https://*.org/**"
+
+  # --------------------------------------------------------------------------
+  # FILESYSTEM ALLOW RULES (Market Research Scenario)
+  # --------------------------------------------------------------------------
+
+  # Allow: Write ONLY to /data/leads.csv
+  - name: allow-leads-csv-write
+    description: "Allow writing research leads to designated output file"
+    effect: allow
+    principals: ["agent:market-research", "agent:playground"]
+    actions: ["fs.write"]
+    resources:
+      - "/data/leads.csv"
+      - "/data/leads.json"
+      - "/data/research_output.*"
+
+  # Allow: Read from workspace directory (non-hidden files only)
+  - name: allow-workspace-read
+    description: "Allow reading workspace files for task context"
+    effect: allow
+    principals: ["agent:*"]
+    actions: ["fs.read", "fs.list"]
+    resources:
+      - "/workspace/**"
+      - "/data/**"
+    # Note: Hidden files already blocked by deny-hidden-files rule above
+
+  # --------------------------------------------------------------------------
+  # BROWSER ALLOW RULES (Playwright Headless)
+  # --------------------------------------------------------------------------
+
+  # Allow: Launch headless Playwright browser
+  - name: allow-browser-launch
+    description: "Allow launching headless browser for web scraping"
+    effect: allow
+    principals: ["agent:market-research", "agent:playground"]
+    actions: ["browser.launch"]
+    resources: ["*"]
+    conditions:
+      # Require headless mode
+      headless: true
+      # Allowed browser engines
+      browser_type: ["chromium", "firefox", "webkit"]
+
+  # Allow: Browser navigation and interaction
+  - name: allow-browser-actions
+    description: "Allow browser navigation and DOM interactions"
+    effect: allow
+    principals: ["agent:market-research", "agent:playground"]
+    actions:
+      - "browser.navigate"
+      - "browser.click"
+      - "browser.type"
+      - "browser.screenshot"
+      - "browser.evaluate"
+      - "browser.wait"
+      - "browser.scroll"
+      - "browser.close"
+    resources: ["*"]
+
+  # --------------------------------------------------------------------------
+  # SHELL ALLOW RULES (Minimal)
+  # --------------------------------------------------------------------------
+
+  # Allow: Only read-only shell commands
+  - name: allow-safe-shell-readonly
+    description: "Allow minimal read-only shell commands"
+    effect: allow
+    principals: ["agent:*"]
+    actions: ["shell.exec"]
+    resources:
+      - "ls *"
+      - "pwd"
+      - "date"
+      - "whoami"
+      - "cat /data/*"
+      - "head /data/*"
+      - "tail /data/*"
+      - "wc *"
+
+  # --------------------------------------------------------------------------
+  # INTERNAL TOOLS ALLOW RULES
+  # --------------------------------------------------------------------------
+
+  # Allow: Internal agent tools (required for Claude Code operation)
+  - name: allow-internal-tools
+    description: "Allow internal agent tool operations"
+    effect: allow
+    principals: ["agent:*"]
+    actions: ["tool.*"]
+    resources: ["*"]
+
+# ============================================================================
+# DEFAULT DENY - Catch-all (must be last rule)
+# ============================================================================
+
+  - name: default-deny-all
+    description: "DEFAULT DENY: Block any action not explicitly allowed above"
+    effect: deny
+    principals: ["*"]
+    actions: ["*"]
+    resources: ["*"]
+
+# ============================================================================
+# AUDIT CONFIGURATION
+# ============================================================================
+
+audit:
+  # Log all policy decisions
+  log_level: "info"
+  # Include denied requests in audit log
+  log_denials: true
+  # Include allowed requests in audit log
+  log_allows: true
+  # Redact sensitive data from logs
+  redact_patterns:
+    - "*password*"
+    - "*secret*"
+    - "*token*"
+    - "*api_key*"
