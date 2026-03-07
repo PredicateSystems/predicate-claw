@@ -47,7 +47,10 @@ npm install predicate-claw
 
 **Right pane:** The integration demo using the real `createSecureClawPlugin()` SDK—legitimate file reads succeed, while sensitive file access, dangerous shell commands, and prompt injection attacks are blocked before execution.
 
-### Zero-Trust AI Agent Playground (Recommended)
+### Zero-Trust AI Agent Playground
+#### Complete Agent Loop: Pre-execution authorization + Post-execution deterministic verification
+
+![Zero-Trust Agent Demo](docs/images/openclaw_complete_loop_demo_s.gif)
 
 The **Market Research Agent** demo showcases the complete **Zero-Trust architecture**:
 
@@ -78,7 +81,7 @@ See [Zero-Trust Agent Demo](examples/real-openclaw-demo/README.md) for full inst
 
 ### Token-Saving Snapshot Skill
 
-The `predicate-snapshot` skill is a **game-changer for token efficiency**. Instead of sending full page HTML to the LLM (tens of thousands of tokens), it captures structured DOM snapshots with only actionable elements:
+The `predicate-snapshot` skill is a **game-changer for token efficiency**. Instead of sending full page HTML or full accessbility tree (A11y) to the LLM (tens of thousands of tokens), it captures structured DOM snapshots with only actionable elements:
 
 ```typescript
 // Traditional approach: 50,000+ tokens of raw HTML
