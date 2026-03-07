@@ -1,0 +1,143 @@
+# Agent Runtime Container for AI Agent Playground
+#
+# Ubuntu 24.04 LTS with:
+# - Node.js 22.x
+# - Playwright with browser binaries (Chromium, Firefox, WebKit)
+# - @predicatesystems/runtime SDK
+# - Python 3.12 (optional, for webbench agents)
+# - Non-root user: agentuser
+#
+# Usage:
+#   docker build -f Dockerfile.playground -t agent-runtime .
+#   docker run -it --rm agent-runtime bash
+
+FROM ubuntu:24.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install base dependencies and Node.js 22.x
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    gnupg \
+    git \
+    jq \
+    # Python 3.12 for webbench agents (optional)
+    python3.12 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22.x from NodeSource
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Playwright system dependencies
+# These are required for Chromium, Firefox, and WebKit browsers
+RUN apt-get update && apt-get install -y \
+    # Core libraries
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2t64 \
+    libpango-1.0-0 \
+    libcairo2 \
+    # Firefox dependencies
+    libdbus-glib-1-2 \
+    # WebKit dependencies
+    libwoff1 \
+    libharfbuzz-icu0 \
+    libgstreamer-plugins-base1.0-0 \
+    libgstreamer-gl1.0-0 \
+    libgstreamer-plugins-bad1.0-0 \
+    libenchant-2-2 \
+    libsecret-1-0 \
+    libhyphen0 \
+    libmanette-0.2-0 \
+    libgles2 \
+    # Fonts for rendering
+    fonts-noto-color-emoji \
+    fonts-noto-cjk \
+    fonts-freefont-ttf \
+    # X11 virtual framebuffer for headless
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+# This is required for Playwright and Claude Code's --dangerously-skip-permissions
+# Use UID 1001 to avoid conflict with existing ubuntu user (UID 1000)
+RUN useradd -m -s /bin/bash -u 1001 agentuser
+
+# Create directories with proper permissions
+RUN mkdir -p /app /data /workspace \
+    && chown -R agentuser:agentuser /app /data /workspace
+
+WORKDIR /app
+
+# Copy SDK source for building (as root for npm install)
+COPY --chown=agentuser:agentuser package*.json ./
+COPY --chown=agentuser:agentuser tsconfig.json ./
+COPY --chown=agentuser:agentuser src/ ./src/
+
+# Install dependencies and build SDK
+RUN npm install && npm run build
+
+# Install Playwright CLI and browsers as agentuser
+USER agentuser
+
+# Set Playwright browser path
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/agentuser/.cache/ms-playwright
+
+# Install Playwright browsers (Chromium only by default for faster builds)
+# Add firefox and webkit if needed: npx playwright install firefox webkit
+RUN npx playwright install chromium
+
+# Switch back to root temporarily to set up remaining items
+USER root
+
+# Copy demo workspace files
+COPY --chown=agentuser:agentuser examples/real-openclaw-demo/workspace/ /workspace/
+
+# Copy agent source files (market research agent)
+COPY --chown=agentuser:agentuser examples/real-openclaw-demo/src/ /app/examples/real-openclaw-demo/src/
+
+# Copy SecureClaw hook script (if using Claude Code integration)
+COPY --chown=agentuser:agentuser examples/real-openclaw-demo/secureclaw-hook.sh /app/secureclaw-hook.sh
+RUN chmod +x /app/secureclaw-hook.sh
+
+# Install tsx for running TypeScript directly
+RUN npm install -g tsx
+
+# Create data directory with proper permissions
+RUN mkdir -p /data && chown -R agentuser:agentuser /data
+
+# Switch to non-root user for execution
+USER agentuser
+
+# Set working directory
+WORKDIR /app
+
+# Environment variables
+ENV HOME=/home/agentuser
+ENV NODE_ENV=production
+ENV PREDICATE_SIDECAR_URL=http://predicate-sidecar:8000
+ENV SECURECLAW_PRINCIPAL=agent:market-research
+ENV SECURECLAW_VERBOSE=true
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD node -e "console.log('ok')" || exit 1
+
+# Default: run the market research agent
+CMD ["npx", "tsx", "/app/examples/real-openclaw-demo/src/market-research-agent.ts"]
