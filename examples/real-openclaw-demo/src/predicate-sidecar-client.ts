@@ -134,11 +134,14 @@ export class PredicateSidecarClient {
   }
 
   /**
-   * Execute an action through the sidecar's execution proxy.
-   * The sidecar checks policy AND executes the action on our behalf.
+   * Authorize an action through the sidecar's policy engine.
    *
-   * This is the PRIMARY method agents should use - it combines authorization
-   * and execution into a single atomic operation.
+   * ARCHITECTURE NOTE:
+   * In authorize-only mode, the sidecar checks policy but does NOT execute.
+   * The caller is responsible for execution ONLY if allowed=true.
+   *
+   * CRITICAL: If the sidecar returns allowed=false or is unavailable,
+   * the caller MUST NOT execute the action. This is fail-closed enforcement.
    */
   async execute(intent: Omit<ExecuteIntent, "principal">): Promise<ExecuteResult> {
     const fullIntent: ExecuteIntent = {
@@ -162,10 +165,11 @@ export class PredicateSidecarClient {
 
     try {
       // ======================================================================
-      // CRITICAL: All execution goes through the sidecar's /v1/execute endpoint
-      // The agent NEVER has direct OS access.
+      // AUTHORIZE-ONLY MODE: Check policy via /authorize endpoint
+      // The sidecar evaluates the policy and returns allowed/denied.
+      // Execution happens locally ONLY if allowed=true.
       // ======================================================================
-      const response = await fetch(`${this.sidecarUrl}/v1/execute`, {
+      const response = await fetch(`${this.sidecarUrl}/authorize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(fullIntent),
@@ -191,30 +195,35 @@ export class PredicateSidecarClient {
         throw new Error(`Sidecar error ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json() as ExecuteResult;
-      result.duration_ms = duration_ms;
+      const result = await response.json() as AuthorizeResult;
 
       if (result.allowed) {
         this.logAllowed(intent.action, duration_ms);
+        return {
+          allowed: true,
+          duration_ms,
+        };
       } else {
-        this.logDenied(intent.action, result.error || "unknown");
+        this.logDenied(intent.action, result.reason || result.violated_rule || "policy_denied");
+        return {
+          allowed: false,
+          error: result.reason || "Action denied by policy",
+          matched_rule: result.violated_rule,
+          duration_ms,
+        };
       }
-
-      return result;
     } catch (error) {
       const duration_ms = Date.now() - startTime;
       this.log(`[PRE-EXEC] ⚠ SIDECAR ERROR: ${(error as Error).message}`);
 
-      if (this.failClosed) {
-        return {
-          allowed: false,
-          error: `sidecar_unavailable: ${(error as Error).message}`,
-          duration_ms,
-        };
-      }
-
-      // This should never happen in production - we fail closed
-      throw new Error(`Sidecar unavailable and fail_closed=false is not safe`);
+      // CRITICAL: Fail closed - if sidecar is unavailable, DENY the action
+      // This prevents security bypass via sidecar unavailability
+      this.logDenied(intent.action, `sidecar_unavailable: ${(error as Error).message}`);
+      return {
+        allowed: false,
+        error: `sidecar_unavailable: ${(error as Error).message}`,
+        duration_ms,
+      };
     }
   }
 

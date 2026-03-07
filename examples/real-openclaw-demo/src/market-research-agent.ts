@@ -51,6 +51,7 @@ import {
   JsonlTraceSink,
   exists,
   urlContains,
+  backends,
   type Snapshot,
   type LLMResponse,
 } from "@predicatesystems/runtime";
@@ -163,12 +164,54 @@ interface Lead {
 // Main Agent Class
 // ============================================================================
 
+// Browser-use compatible session wrapper for PredicateContext
+// This wraps a Playwright page to provide the getOrCreateCdpSession method
+function createBrowserUseSession(page: Page) {
+  let cdpSession: any = null;
+
+  return {
+    async getOrCreateCdpSession() {
+      if (!cdpSession) {
+        const context = page.context();
+        cdpSession = await context.newCDPSession(page);
+      }
+
+      // Create a proxy that matches browser-use's CDP client interface
+      const cdpClient = {
+        send: new Proxy(
+          {},
+          {
+            get(_target: any, domain: string) {
+              return new Proxy(
+                {},
+                {
+                  get(_innerTarget: any, method: string) {
+                    return async (options: { params?: unknown; session_id?: string }) => {
+                      const fullMethod = `${domain}.${method}`;
+                      const result = await cdpSession.send(fullMethod, options.params || {});
+                      return result;
+                    };
+                  },
+                }
+              );
+            },
+          }
+        ),
+      };
+
+      return { cdpClient, sessionId: `playwright-${Date.now()}` };
+    },
+  };
+}
+
 class MarketResearchAgent {
   private sidecar: PredicateSidecarClient;
   private runtime: PredicateRuntime;
   private agentRuntime: AgentRuntime | null = null;
   private tracer: Tracer | null = null;
   private predicateBrowser: PredicateBrowser | null = null;
+  private predicateContext: backends.PredicateContext | null = null;
+  private browserSession: ReturnType<typeof createBrowserUseSession> | null = null;
   private sentienceAgent: SentienceAgent | null = null;
   private llmProvider: AnthropicProvider | null = null;
   private page: Page | null = null;
@@ -220,6 +263,44 @@ class MarketResearchAgent {
     if (response.totalTokens) {
       this.tokenUsage.totalTokens += response.totalTokens;
     }
+  }
+
+  /**
+   * Take ML-enhanced snapshot using PredicateContext (predicate-snapshot skill pattern)
+   * This uses CDP directly and doesn't require the Chrome extension
+   */
+  private async takeMLSnapshot(): Promise<Snapshot> {
+    if (this.predicateContext && this.browserSession) {
+      try {
+        const result = await this.predicateContext.build(this.browserSession);
+
+        // SentienceContextState has: { url, snapshot, promptBlock }
+        // The snapshot property contains the full Snapshot with elements
+        const hasContent = result && (result.promptBlock || result.snapshot?.elements?.length);
+
+        if (!hasContent) {
+          logError("ML snapshot returned empty content, falling back to local");
+          throw new Error("Empty ML snapshot");
+        }
+
+        // Return the snapshot from result, with text set to promptBlock for LLM use
+        const snapshot: Snapshot = {
+          ...result.snapshot,
+          text: result.promptBlock || result.snapshot.text || "",
+        };
+
+        return snapshot;
+      } catch (error) {
+        logError(`ML snapshot failed: ${(error as Error).message}, falling back to local`);
+      }
+    }
+
+    // Fallback to PredicateBrowser snapshot (local, no ML)
+    if (this.predicateBrowser) {
+      return await this.predicateBrowser.snapshot();
+    }
+
+    throw new Error("No snapshot method available");
   }
 
   /**
@@ -432,6 +513,21 @@ class MarketResearchAgent {
       throw new Error("Failed to get page from PredicateBrowser");
     }
 
+    // Initialize PredicateContext for ML-enhanced snapshots (predicate-snapshot skill pattern)
+    // This uses CDP directly and doesn't require the Chrome extension
+    if (CONFIG.predicateApiKey) {
+      this.browserSession = createBrowserUseSession(this.page);
+      this.predicateContext = new backends.PredicateContext({
+        predicateApiKey: CONFIG.predicateApiKey,
+        topElementSelector: {
+          byImportance: 50,
+          fromDominantGroup: 15,
+          byPosition: 10,
+        },
+      });
+      logInfo("PredicateContext initialized for ML-enhanced snapshots");
+    }
+
     // Initialize SentienceAgent with LLM
     this.sentienceAgent = new SentienceAgent(
       this.predicateBrowser,
@@ -441,10 +537,10 @@ class MarketResearchAgent {
     );
 
     // Create browser adapter for AgentRuntime
-    // AgentRuntime expects snapshot(page, options) but PredicateBrowser has snapshot(options)
+    // Use ML-enhanced snapshot if available, otherwise fall back to PredicateBrowser
     const browserAdapter = {
       snapshot: async (_page: Page, options?: Record<string, unknown>): Promise<Snapshot> => {
-        return await this.predicateBrowser!.snapshot(options);
+        return await this.takeMLSnapshot();
       },
     };
 
@@ -498,7 +594,7 @@ class MarketResearchAgent {
 
     // Use LLM to verify we're on the right page
     logLLM("Asking LLM to verify page content...");
-    const snapshot = await this.predicateBrowser.snapshot();
+    const snapshot = await this.takeMLSnapshot();
 
     const verifyResponse = await this.llmProvider!.generate(
       "You are a web page analyzer. Respond with JSON only.",
@@ -530,7 +626,7 @@ Respond with JSON: {"isShowHN": true/false, "reason": "brief explanation"}`,
 
     logInfo("Taking ML-enhanced snapshot for verification...");
 
-    const snapshot: Snapshot = await this.predicateBrowser.snapshot();
+    const snapshot: Snapshot = await this.takeMLSnapshot();
     logInfo(`Snapshot captured: ${snapshot.text?.length || 0} chars of accessible text`);
 
     // Use SDK predicates with .eventually() for delayed hydration handling
@@ -555,10 +651,11 @@ Respond with JSON: {"isShowHN": true/false, "reason": "brief explanation"}`,
     }
     logSuccess("URL verified: news.ycombinator.com");
 
-    // Verify post elements exist using .eventually()
+    // Verify page has interactive elements using .eventually()
+    // Use clickable=true since ML snapshot captures clickable elements
     const postsLoaded = await this.agentRuntime.check(
-      exists("role=link"),  // Posts have links
-      "posts_visible",
+      exists("clickable=true"),  // Page has clickable elements (links, buttons)
+      "interactive_elements_visible",
       true // required
     ).eventually({
       timeoutMs: 10000,
@@ -566,9 +663,9 @@ Respond with JSON: {"isShowHN": true/false, "reason": "brief explanation"}`,
     });
 
     if (!postsLoaded) {
-      throw new Error("Posts did not load within timeout");
+      throw new Error("Interactive elements did not load within timeout");
     }
-    logSuccess("Posts verified: content loaded");
+    logSuccess("Interactive elements verified: content loaded");
 
     // Also run legacy runtime verification for comparison
     await this.runtime.snapshot({ includeScreenshot: false });
@@ -599,8 +696,8 @@ Respond with JSON: {"isShowHN": true/false, "reason": "brief explanation"}`,
 
     logInfo(`Asking LLM to extract top ${CONFIG.topN} posts...`);
 
-    // Take a fresh snapshot for the LLM
-    const snapshot = await this.predicateBrowser.snapshot();
+    // Take a fresh ML-enhanced snapshot for the LLM
+    const snapshot = await this.takeMLSnapshot();
 
     // Ask LLM to extract structured data
     const extractPrompt = `You are a data extraction assistant. Extract the top ${CONFIG.topN} posts from this Hacker News "Show HN" page.
@@ -714,40 +811,41 @@ IMPORTANT:
   /**
    * STEP 5: Load Existing Leads
    *
-   * Note: Since the sidecar may not support fs.read yet (returns 404),
-   * we fall back to direct file access for this demo.
-   * In production, all fs operations would go through the sidecar.
+   * ZERO-TRUST ARCHITECTURE:
+   * 1. Request authorization from sidecar via /authorize
+   * 2. If ALLOWED, execute locally (sidecar is authorize-only mode)
+   * 3. If DENIED or sidecar unavailable, FAIL CLOSED - no fallback
    */
   private async loadExistingLeads(): Promise<Lead[]> {
     logInfo(`Reading existing leads from ${CONFIG.leadsFile}...`);
 
-    // Try sidecar first
-    const result = await this.sidecar.readFile(CONFIG.leadsFile);
+    // Step 1: Request authorization from sidecar
+    const authResult = await this.sidecar.readFile(CONFIG.leadsFile);
 
-    let csvData: string | null = null;
-
-    if (result.allowed && result.data) {
-      csvData = result.data as string;
-    } else if (result.error?.includes("404") || result.error?.includes("sidecar")) {
-      // Sidecar doesn't support fs.read yet - fall back to direct access for demo
-      logInfo("Sidecar fs.read not available, using direct file access for demo...");
-      try {
-        if (fs.existsSync(CONFIG.leadsFile)) {
-          csvData = fs.readFileSync(CONFIG.leadsFile, "utf-8");
-        } else {
-          logInfo("No existing CSV found - this is the first run");
-          return [];
-        }
-      } catch (err) {
+    // Step 2: Check authorization result - FAIL CLOSED
+    if (!authResult.allowed) {
+      // Check if file doesn't exist (expected on first run)
+      if (authResult.error?.includes("ENOENT") || authResult.error?.includes("not found")) {
         logInfo("No existing CSV found - this is the first run");
         return [];
       }
-    } else if (result.error?.includes("ENOENT") || result.error?.includes("not found")) {
-      logInfo("No existing CSV found - this is the first run");
-      return [];
-    } else {
-      // Some other error - log but continue
-      logInfo(`Could not read CSV (${result.error}), starting fresh`);
+      // Policy denial or sidecar error - FAIL CLOSED
+      throw new Error(`[ZERO-TRUST] File read DENIED: ${authResult.error}`);
+    }
+
+    // Step 3: Authorization granted - execute locally
+    logSuccess("File read AUTHORIZED by policy");
+
+    let csvData: string;
+    try {
+      if (!fs.existsSync(CONFIG.leadsFile)) {
+        logInfo("No existing CSV found - this is the first run");
+        return [];
+      }
+      csvData = fs.readFileSync(CONFIG.leadsFile, "utf-8");
+    } catch (err) {
+      // File read error after authorization - this is an OS error, not policy
+      logInfo(`File read error: ${(err as Error).message}`);
       return [];
     }
 
@@ -789,9 +887,10 @@ IMPORTANT:
   /**
    * STEP 7: Save to CSV
    *
-   * Note: Since the sidecar may not support fs.write yet (returns 404),
-   * we fall back to direct file access for this demo.
-   * In production, all fs operations would go through the sidecar.
+   * ZERO-TRUST ARCHITECTURE:
+   * 1. Request authorization from sidecar via /authorize
+   * 2. If ALLOWED, execute locally (sidecar is authorize-only mode)
+   * 3. If DENIED or sidecar unavailable, FAIL CLOSED - no fallback
    */
   private async saveLeadsToCSV(leads: Lead[]): Promise<void> {
     logInfo(`Writing ${leads.length} lead(s) to ${CONFIG.leadsFile}...`);
@@ -802,27 +901,27 @@ IMPORTANT:
 
     const csvContent = rows.join("\n") + "\n";
 
-    // Try sidecar first
-    const result = await this.sidecar.appendFile(CONFIG.leadsFile, csvContent);
+    // Step 1: Request authorization from sidecar
+    const authResult = await this.sidecar.appendFile(CONFIG.leadsFile, csvContent);
 
-    if (result.allowed) {
-      logSuccess(`Saved ${leads.length} lead(s) to CSV via sidecar`);
-    } else if (result.error?.includes("404") || result.error?.includes("sidecar")) {
-      // Sidecar doesn't support fs.write yet - fall back to direct access for demo
-      logInfo("Sidecar fs.write not available, using direct file access for demo...");
-      try {
-        // Ensure directory exists
-        const dir = path.dirname(CONFIG.leadsFile);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-        fs.appendFileSync(CONFIG.leadsFile, csvContent);
-        logSuccess(`Saved ${leads.length} lead(s) to CSV (direct write)`);
-      } catch (err) {
-        throw new Error(`Failed to write CSV: ${(err as Error).message}`);
+    // Step 2: Check authorization result - FAIL CLOSED
+    if (!authResult.allowed) {
+      throw new Error(`[ZERO-TRUST] File write DENIED: ${authResult.error}`);
+    }
+
+    // Step 3: Authorization granted - execute locally
+    logSuccess("File write AUTHORIZED by policy");
+
+    try {
+      // Ensure directory exists
+      const dir = path.dirname(CONFIG.leadsFile);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
       }
-    } else {
-      throw new Error(`Failed to write CSV: ${result.error}`);
+      fs.appendFileSync(CONFIG.leadsFile, csvContent);
+      logSuccess(`Saved ${leads.length} lead(s) to CSV`);
+    } catch (err) {
+      throw new Error(`File write failed after authorization: ${(err as Error).message}`);
     }
 
     // Demo: Show policy enforcement for unauthorized write

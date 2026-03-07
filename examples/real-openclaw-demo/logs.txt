@@ -1,35 +1,3 @@
-Use 'docker scan' to run Snyk tests against images to find vulnerabilities and learn how to fix them
-Starting Predicate Sidecar...
-[+] Running 0/1
- ⠹ Network real-openclaw-demo_playground-net  Creating                                                                                                                              0.3s
-[+] Running 2/2d orphan containers ([real-openclaw-demo_claude-agent_run_8d673df6c118 real-openclaw-demo_claude-agent_1 real-openclaw-demo_sidecar_1]) for this project. If you removed o
- ⠿ Network real-openclaw-demo_playground-net         Created                                                                                                                        0.3s
- ⠿ Container real-openclaw-demo_predicate-sidecar_1  Started                                                                                                                        0.6s
-Waiting for sidecar health check...
-Sidecar is healthy!
-Running Market Research Agent...
-
-WARN[0000] Found orphan containers ([real-openclaw-demo_claude-agent_run_8d673df6c118 real-openclaw-demo_claude-agent_1 real-openclaw-demo_sidecar_1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up. 
-[+] Running 1/0
- ⠿ Container real-openclaw-demo_predicate-sidecar_1  Running                                                                                                                        0.0s
-
-
-╔═══════════════════════════════════════════════════════════════════════════╗
-║                                                                           ║
-║   ██████╗ ██████╗ ███████╗██████╗ ██╗ ██████╗ █████╗ ████████╗███████╗   ║
-║   ██╔══██╗██╔══██╗██╔════╝██╔══██╗██║██╔════╝██╔══██╗╚══██╔══╝██╔════╝   ║
-║   ██████╔╝██████╔╝█████╗  ██║  ██║██║██║     ███████║   ██║   █████╗     ║
-║   ██╔═══╝ ██╔══██╗██╔══╝  ██║  ██║██║██║     ██╔══██║   ██║   ██╔══╝     ║
-║   ██║     ██║  ██║███████╗██████╔╝██║╚██████╗██║  ██║   ██║   ███████╗   ║
-║   ╚═╝     ╚═╝  ╚═╝╚══════╝╚═════╝ ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝   ║
-║                                                                           ║
-║   Zero-Trust AI Agent with Claude LLM                                     ║
-║   Pre-Execution Gate + Post-Execution Verification                        ║
-║                                                                           ║
-╚═══════════════════════════════════════════════════════════════════════════╝
-
-  → LLM Provider initialized: claude-sonnet-4-20250514
-
 ══════════════════════════════════════════════════════════════════════
 ║ MARKET RESEARCH AGENT - Zero-Trust Demo with LLM
 ══════════════════════════════════════════════════════════════════════
@@ -45,14 +13,16 @@ Configuration:
   → Initializing tracer...
   → PREDICATE_API_KEY set - Cloud tracing would be enabled
   → (Full cloud support requires SDK export of createTracer)
-  → Local trace file: /app/traces/a2258c0d-6791-4345-9d7d-ff43c5270f58.jsonl
+  → Local trace file: /app/traces/9204faf1-f48e-408d-ba91-f5668908f206.jsonl
 [Step 1] Launching headless browser with LLM agent
   → Requesting browser launch through Pre-Execution Gate...
 [PredicateSidecar] [PRE-EXEC] Authorizing: browser.launch on *
-(node:30) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:31) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 [PredicateSidecar] [PRE-EXEC] ✓ ALLOWED: browser.launch
   ✓ Browser launch AUTHORIZED by policy
+  → ML-enhanced snapshots enabled (PREDICATE_API_KEY set)
+  → PredicateContext initialized for ML-enhanced snapshots
 [RUNTIME] Attached to Playwright page
   ✓ PredicateBrowser launched with Chrome extension (headless mode)
   ✓ SentienceAgent initialized with claude-sonnet-4-20250514
@@ -64,14 +34,28 @@ Configuration:
   ✓ Navigation AUTHORIZED by policy
   ✓ Navigated to https://news.ycombinator.com/show
   🤖 Asking LLM to verify page content...
+Sentience extension ready after 0ms
+Formatted 19 elements (top 50 by importance + top 15 from dominant group + top 10 by position)
+SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
   🤖 LLM Response: ```json
-{"isShowHN": false, "reason": "No text content available to analyze - page appears to be emp...
+{
+  "isShowHN": true,
+  "reason": "The URL is https://news.ycombinator.com/show and the page...
 [Step 3] Verifying page state before extraction
   → Taking ML-enhanced snapshot for verification...
-  → Snapshot captured: 0 chars of accessible text
+Sentience extension ready after 0ms
+Formatted 19 elements (top 50 by importance + top 15 from dominant group + top 10 by position)
+SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
+  → Snapshot captured: 862 chars of accessible text
   → Waiting for page content to hydrate using SDK predicates...
+Sentience extension ready after 0ms
+Formatted 19 elements (top 50 by importance + top 15 from dominant group + top 10 by position)
+SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
   ✓ URL verified: news.ycombinator.com
-  ✓ Posts verified: content loaded
+Sentience extension ready after 0ms
+Formatted 19 elements (top 50 by importance + top 15 from dominant group + top 10 by position)
+SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
+  ✓ Interactive elements verified: content loaded
 [RUNTIME] Taking snapshot...
 [RUNTIME] Snapshot captured: 200 elements, confidence: 1.000
 
@@ -93,13 +77,12 @@ Configuration:
   ✓ Page state VERIFIED - safe to extract data
 [Step 4] Extracting top 3 posts (LLM-assisted)
   → Asking LLM to extract top 3 posts...
+Sentience extension ready after 0ms
+Formatted 19 elements (top 50 by importance + top 15 from dominant group + top 10 by position)
+SentienceContext snapshot: 60 elements URL=https://news.ycombinator.com/show
   🤖 Sending extraction request to Claude...
-  🤖 LLM used 176 tokens for extraction
-  → LLM extraction returned empty, falling back to DOM...
-  → Extracting top 3 posts from DOM...
-  ✓ #1: "Show HN: Moongate – Ultima Online server emulator ..." (236 points)
-  ✓ #2: "Show HN: 1v1 coding game that LLMs struggle with..." (9 points)
-  ✓ #3: "Show HN: Kula – Lightweight, self-contained Linux ..." (17 points)
+  🤖 LLM used 758 tokens for extraction
+  ✓ #1: "Show HN: Moongate – Ultima ......" (0 points)
 [Step 5] Loading existing leads from CSV
   → Reading existing leads from /data/leads.csv...
 [PredicateSidecar] 
@@ -111,9 +94,16 @@ Configuration:
 [PredicateSidecar]   Principal: agent:market-research
 [PredicateSidecar] ============================================================
 
-[PredicateSidecar] [PRE-EXEC] ⚠ SIDECAR ERROR: Sidecar error 404: 
-  → Sidecar fs.read not available, using direct file access for demo...
-  ✓ Loaded 3 existing lead(s)
+
+┌──────────────────────────────────────────────────────────┐
+│  PRE-EXECUTION: ALLOWED                                │
+├──────────────────────────────────────────────────────────┤
+│ Action:   fs.read                                        │
+│ Duration: 2ms                                            │
+└──────────────────────────────────────────────────────────┘
+
+  ✓ File read AUTHORIZED by policy
+  ✓ Loaded 6 existing lead(s)
 [Step 6] Checking for new/changed leads
   ✓ Found 1 new lead(s)!
 [Step 7] Saving leads to CSV (Pre-Execution Gate)
@@ -127,9 +117,16 @@ Configuration:
 [PredicateSidecar]   Principal: agent:market-research
 [PredicateSidecar] ============================================================
 
-[PredicateSidecar] [PRE-EXEC] ⚠ SIDECAR ERROR: Sidecar error 404: 
-  → Sidecar fs.write not available, using direct file access for demo...
-  ✓ Saved 1 lead(s) to CSV (direct write)
+
+┌──────────────────────────────────────────────────────────┐
+│  PRE-EXECUTION: ALLOWED                                │
+├──────────────────────────────────────────────────────────┤
+│ Action:   fs.write                                       │
+│ Duration: 2ms                                            │
+└──────────────────────────────────────────────────────────┘
+
+  ✓ File write AUTHORIZED by policy
+  ✓ Saved 1 lead(s) to CSV
   → Demo: Attempting unauthorized write to /etc/passwd...
 [PredicateSidecar] 
 ============================================================
@@ -140,8 +137,15 @@ Configuration:
 [PredicateSidecar]   Principal: agent:market-research
 [PredicateSidecar] ============================================================
 
-[PredicateSidecar] [PRE-EXEC] ⚠ SIDECAR ERROR: Sidecar error 404: 
-  ✓ BLOCKED by policy: sidecar_unavailable: Sidecar error 404: 
+
+┌──────────────────────────────────────────────────────────┐
+│  PRE-EXECUTION: DENIED                                 │
+├──────────────────────────────────────────────────────────┤
+│ Action:   fs.write                                       │
+│ Reason:   explicit_deny                                  │
+└──────────────────────────────────────────────────────────┘
+
+  ✓ BLOCKED by policy: explicit_deny
 [Step 8] Cleanup
   ✓ PredicateBrowser closed
   ✓ Tracer closed (trace uploaded to cloud)
@@ -151,11 +155,11 @@ Configuration:
 ══════════════════════════════════════════════════════════════════════
 
 Token Usage (LLM calls):
-  Prompt tokens:     262
-  Completion tokens: 46
-  Total tokens:      308
+  Prompt tokens:     1206
+  Completion tokens: 207
+  Total tokens:      1413
 Tracer:
-  Run ID: a2258c0d-6791-4345-9d7d-ff43c5270f58
+  Run ID: 9204faf1-f48e-408d-ba91-f5668908f206
   Mode: Cloud (uploaded to Predicate Studio)
 
 Stopping containers...
