@@ -47,7 +47,55 @@ npm install predicate-claw
 
 **Right pane:** The integration demo using the real `createSecureClawPlugin()` SDK—legitimate file reads succeed, while sensitive file access, dangerous shell commands, and prompt injection attacks are blocked before execution.
 
-### Real Claude Code Integration
+### Zero-Trust AI Agent Playground (Recommended)
+
+The **Market Research Agent** demo showcases the complete **Zero-Trust architecture**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    ZERO-TRUST AI AGENT ARCHITECTURE                     │
+│                                                                         │
+│  ┌───────────────┐    ┌─────────────────┐    ┌───────────────────────┐  │
+│  │   LLM/Agent   │───▶│ PRE-EXECUTION   │───▶│ POST-EXECUTION        │  │
+│  │   (Claude)    │    │ GATE            │    │ VERIFICATION          │  │
+│  └───────────────┘    │ (Sidecar)       │    │ (SDK Predicates)      │  │
+│                       │ ALLOW / DENY    │    │ PASS / FAIL           │  │
+│                       └─────────────────┘    └───────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Pre-Execution Gate:** Policy-based authorization before any action executes
+- **Post-Execution Verification:** Deterministic predicates verify state after execution
+- **Cloud Tracing:** Full observability with screenshots in [Predicate Studio](https://www.predicatesystems.ai/studio)
+
+```bash
+cd examples/real-openclaw-demo
+export ANTHROPIC_API_KEY="sk-ant-..."
+./run-playground.sh
+```
+
+See [Zero-Trust Agent Demo](examples/real-openclaw-demo/README.md) for full instructions.
+
+### Token-Saving Snapshot Skill
+
+The `predicate-snapshot` skill is a **game-changer for token efficiency**. Instead of sending full page HTML to the LLM (tens of thousands of tokens), it captures structured DOM snapshots with only actionable elements:
+
+```typescript
+// Traditional approach: 50,000+ tokens of raw HTML
+const html = await page.content();
+
+// With predicate-snapshot: ~500 tokens of structured data
+const snapshot = await agentRuntime.snapshot({
+  screenshot: { format: "jpeg", quality: 80 },
+  use_api: true,
+  limit: 50,  // Top 50 interactive elements
+});
+// Returns: { elements: [...], text: "...", screenshot: "base64..." }
+```
+
+**Token savings: 90-99%** while maintaining all information the LLM needs to act.
+
+### Legacy Claude Code Integration
 
 We also provide a **real Claude Code demo** that uses actual Anthropic API calls with SecureClaw hooks intercepting every tool call. See the [Real OpenClaw Demo](examples/real-openclaw-demo/README.md) for instructions.
 
@@ -348,6 +396,7 @@ However, when deploying a fleet of AI agents in regulated environments (FinTech,
 
 | Project | Description |
 |---------|-------------|
+| [@predicatesystems/runtime](https://www.npmjs.com/package/@predicatesystems/runtime) | Runtime SDK with snapshot, predicates, and cloud tracing |
 | [predicate-authority-sidecar](https://github.com/PredicateSystems/predicate-authority-sidecar) | Rust policy engine |
 | [predicate-authority-ts](https://github.com/PredicateSystems/predicate-authority-ts) | TypeScript SDK |
 | [predicate-authority](https://github.com/PredicateSystems/predicate-authority) | Python SDK |

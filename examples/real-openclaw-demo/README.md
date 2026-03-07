@@ -1,18 +1,276 @@
-# Real Predicate Authority Demo
+# Zero-Trust AI Agent Playground
 
-This demo shows the **actual SDK integration** with real-time authorization via Predicate Authority sidecar.
+A complete demonstration of **production-ready AI agent architecture** with Pre-Execution Authorization, Post-Execution Verification, and Cloud Tracing.
 
-## Features
+## Overview
 
-- **Real Authorization**: Predicate Authority sidecar enforces security policy
-- **Real HTTP Calls**: SDK makes actual HTTP requests to sidecar for authorization
-- **SecureClaw Plugin**: Pre-execution authorization via `PreToolUse` hooks
-- **Two Modes**: Simulated demo (no API key) or Real Claude Code (requires Anthropic API key)
-- **Split-Screen Mode**: tmux-based side-by-side view of sidecar + demo
+This playground demonstrates the complete Zero-Trust agent loop:
 
-## Quick Start
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    ZERO-TRUST AI AGENT ARCHITECTURE                     │
+│                                                                         │
+│  ┌───────────────┐    ┌─────────────────┐    ┌───────────────────────┐  │
+│  │   LLM/Agent   │───▶│ PRE-EXECUTION   │───▶│ POST-EXECUTION        │  │
+│  │   (Claude)    │    │ GATE            │    │ VERIFICATION          │  │
+│  └───────────────┘    │                 │    │                       │  │
+│                       │ ┌─────────────┐ │    │ ┌───────────────────┐ │  │
+│                       │ │ Predicate   │ │    │ │ Predicate Runtime │ │  │
+│                       │ │ Sidecar     │ │    │ │ SDK               │ │  │
+│                       │ │ Policy Check│ │    │ │ State Assertions  │ │  │
+│                       │ └─────────────┘ │    │ └───────────────────┘ │  │
+│                       │       ↓         │    │          ↓            │  │
+│                       │  ALLOW / DENY   │    │    PASS / FAIL        │  │
+│                       └─────────────────┘    └───────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-### Option 1: Run with Real Claude Code (Recommended)
+## Quick Start: Market Research Agent
+
+The main demo is a Market Research Agent that:
+1. Launches a headless browser (with policy authorization)
+2. Navigates to Hacker News (with policy authorization)
+3. Verifies page state using deterministic predicates
+4. Extracts top posts via Claude LLM
+5. Saves results to CSV (with policy authorization)
+6. Demonstrates policy denial for unauthorized writes
+
+```bash
+# 1. Set environment variables
+export ANTHROPIC_API_KEY="sk-ant-..."      # Required: Claude API key
+export PREDICATE_API_KEY="sk_pro_..."      # Optional: Cloud tracing
+
+# 2. Run the playground
+./run-playground.sh
+```
+
+### Sample Output
+
+```
+══════════════════════════════════════════════════════════════════════
+║ MARKET RESEARCH AGENT - Zero-Trust Demo with LLM
+══════════════════════════════════════════════════════════════════════
+
+[Step 1] Launching headless browser with LLM agent
+┌──────────────────────────────────────────────────────────┐
+│ PRE-EXECUTION: ALLOWED                                   │
+│ Action:   browser.launch                                 │
+└──────────────────────────────────────────────────────────┘
+  ✓ Browser launch AUTHORIZED by policy
+
+[Step 3] Verifying page state before extraction
+  → Snapshot captured: 60 elements, screenshot: yes
+  ✓ URL verified: news.ycombinator.com
+  ✓ Interactive elements verified: content loaded
+
+============================================================
+[POST-EXECUTION VERIFICATION]
+============================================================
+  ✓ [REQUIRED] url_contains("news.ycombinator.com")
+  ✓ [REQUIRED] dom_contains("Show")
+  ✓ [REQUIRED] element_exists("titleline")
+============================================================
+ VERIFICATION PASSED  All 3 required assertions passed
+============================================================
+
+[Step 7] Saving leads to CSV (Pre-Execution Gate)
+┌──────────────────────────────────────────────────────────┐
+│ PRE-EXECUTION: ALLOWED                                   │
+│ Action:   fs.write                                       │
+│ Resource: /data/leads.csv                                │
+└──────────────────────────────────────────────────────────┘
+  ✓ File write AUTHORIZED by policy
+
+  → Demo: Attempting unauthorized write to /etc/passwd...
+┌──────────────────────────────────────────────────────────┐
+│ PRE-EXECUTION: DENIED                                    │
+│ Action:   fs.write                                       │
+│ Reason:   explicit_deny                                  │
+└──────────────────────────────────────────────────────────┘
+  ✓ BLOCKED by policy: explicit_deny
+
+══════════════════════════════════════════════════════════════════════
+║ AGENT COMPLETED SUCCESSFULLY
+══════════════════════════════════════════════════════════════════════
+
+Tracer:
+  Run ID: 257ec52a-96f2-4f00-893e-71163550dc89
+  Mode: Cloud (uploaded to Predicate Studio)
+```
+
+## Architecture Components
+
+### 1. Pre-Execution Gate (Predicate Sidecar)
+
+**Before any action executes**, the agent requests authorization:
+
+```typescript
+// Agent wants to write a file
+const authResult = await sidecar.writeFile("/data/leads.csv", content);
+
+if (!authResult.allowed) {
+  // FAIL CLOSED - action is blocked, no fallback
+  throw new Error(`[ZERO-TRUST] File write DENIED: ${authResult.error}`);
+}
+
+// Only execute AFTER authorization
+fs.writeFileSync("/data/leads.csv", content);
+```
+
+The sidecar evaluates against declarative policy:
+
+```yaml
+rules:
+  - id: allow-data-writes
+    effect: allow
+    actions: ["fs.write"]
+    resources: ["/data/*"]
+    principals: ["agent:market-research"]
+
+  - id: deny-system-files
+    effect: deny
+    actions: ["fs.write", "fs.read"]
+    resources: ["/etc/*", "/sys/*"]
+    principals: ["*"]
+```
+
+**Key Properties:**
+- **Fail-Closed**: If sidecar unavailable, actions are DENIED
+- **Declarative**: Security rules are code-reviewable YAML
+- **Principal-Based**: Different agents get different permissions
+
+### 2. Post-Execution Verification (Predicate Runtime SDK)
+
+**After actions execute**, deterministic predicates verify state:
+
+```typescript
+// Verify page state using SDK predicates
+const urlValid = await agentRuntime.check(
+  urlContains("news.ycombinator.com"),
+  "url_contains_hackernews",
+  true // required
+).eventually({
+  timeoutMs: 10000,
+  pollMs: 500,
+});
+
+const elementsLoaded = await agentRuntime.check(
+  exists("clickable=true"),
+  "interactive_elements_visible",
+  true // required
+).eventually({
+  timeoutMs: 10000,
+  pollMs: 500,
+});
+```
+
+**Key Properties:**
+- **Deterministic**: No LLM involved in verification
+- **Composable**: Predicates combine with `allOf()`, `anyOf()`
+- **Async-Aware**: `.eventually()` handles delayed hydration
+
+### 3. Cloud Tracing (Predicate Studio)
+
+Every step is traced with screenshots:
+
+```typescript
+const tracer = await createTracer({
+  apiKey: process.env.PREDICATE_API_KEY,
+  goal: "Extract top 3 posts from Hacker News",
+  agentType: "MarketResearchAgent",
+  llmModel: "claude-sonnet-4-20250514",
+});
+
+agentRuntime.beginStep("verify_page_state", 3);
+const snapshot = await agentRuntime.snapshot({
+  screenshot: { format: "jpeg", quality: 80 },
+  emitTrace: true,
+});
+// ... verification ...
+agentRuntime.endStep({ action: "verify", success: true });
+```
+
+View traces at: **https://www.predicatesystems.ai/studio**
+
+## Requirements
+
+- Docker and Docker Compose
+- `ANTHROPIC_API_KEY` - Claude API key (required)
+- `PREDICATE_API_KEY` - Cloud tracing key (optional)
+
+## File Structure
+
+```
+real-openclaw-demo/
+├── README.md                       # This file
+├── ZERO-TRUST-AGENT-DEMO.md        # Detailed architecture docs
+├── run-playground.sh               # Main entry point
+├── docker-compose.playground.yml   # Container orchestration
+├── Dockerfile.playground           # Agent runtime container
+├── Dockerfile.sidecar              # Sidecar container
+├── policy.yaml                     # Authorization rules
+├── policy.json                     # Authorization rules (JSON)
+├── src/
+│   ├── market-research-agent.ts    # Main agent implementation
+│   ├── predicate-sidecar-client.ts # Sidecar HTTP client
+│   └── predicate-runtime.ts        # Legacy runtime (comparison)
+├── data/
+│   └── leads.csv                   # Output file
+└── workspace/                      # Sandbox files
+```
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | - | Claude API key (required) |
+| `PREDICATE_API_KEY` | - | Cloud tracing key (optional) |
+| `PREDICATE_SIDECAR_URL` | `http://predicate-sidecar:8000` | Sidecar URL |
+| `SECURECLAW_PRINCIPAL` | `agent:market-research` | Agent identity |
+| `LLM_MODEL` | `claude-sonnet-4-20250514` | Claude model |
+
+## Troubleshooting
+
+### Sidecar not responding
+
+```bash
+# Check sidecar health
+curl http://localhost:8000/health
+```
+
+### Cloud tracing not working
+
+```bash
+# Verify API key is set
+echo $PREDICATE_API_KEY
+
+# Check trace output
+# Traces are saved locally to ./traces/ if cloud upload fails
+```
+
+### Docker build fails
+
+```bash
+# Clean rebuild
+docker compose -f docker-compose.playground.yml build --no-cache
+```
+
+## Links
+
+- **Predicate Studio**: https://www.predicatesystems.ai/studio
+- **SDK (npm)**: `@predicatesystems/runtime`
+- **Full Architecture Docs**: [ZERO-TRUST-AGENT-DEMO.md](./ZERO-TRUST-AGENT-DEMO.md)
+
+---
+
+## Legacy Demos
+
+The following demos use the older SecureClaw hook approach. They're preserved for reference but the Market Research Agent above is the recommended demo.
+
+<details>
+<summary>SecureClaw Hook Demo (Claude Code Integration)</summary>
+
+### Option 1: Run with Real Claude Code
 
 Uses real Anthropic Claude API with SecureClaw authorization:
 
@@ -25,99 +283,36 @@ docker compose -f docker-compose.claude.yml up -d
 
 # 3. Run Claude Code interactively
 docker compose -f docker-compose.claude.yml run claude-agent claude --dangerously-skip-permissions
-
-# Or run a single command
-docker compose -f docker-compose.claude.yml run claude-agent claude --print --dangerously-skip-permissions -p "Read /workspace/src/config.ts"
 ```
 
 **Example prompts to test:**
 - `"Read /workspace/src/config.ts"` → **Allowed**
 - `"Read /workspace/.env.example"` → **Blocked** by `deny-env-files`
-- `"Run ls -la /workspace"` → **Allowed**
-- `"Run sudo ls"` → **Blocked** by `deny-dangerous-commands`
 
-#### SecureClaw Demo Results
-
-When you run the demo with Claude Code, you'll see results like this:
-
-| # | Action | Result | Policy Rule |
-|---|--------|--------|-------------|
-| 1 | `Read /workspace/src/config.ts` | **Allowed** | `allow-workspace-reads` |
-| 2 | `Read /workspace/.env.example` | **Blocked** | `deny-env-files` |
-| 3 | `ls -la /workspace` | **Allowed** | `allow-safe-shell` |
-| 4 | `sudo ls` | **Blocked** | `deny-dangerous-commands` |
-| 5 | `Read ~/.ssh/id_rsa` | **Blocked** | `deny-ssh-keys` |
-| 6 | `rm -rf /workspace` | **Blocked** | `deny-dangerous-commands` |
-| 7 | `curl ... \| bash` | **Blocked** | `deny-dangerous-commands` |
-| 8 | `Read /etc/passwd` | **Blocked** | `deny-system-files` |
-
-**Key insight:** The SecureClaw hook fires at the framework level, so blocks happen **before** any tool actually executes - the file is never opened, the command never runs.
-
-### Option 2: Simulated Demo (No API Key Required)
-
-Runs 16 authorization scenarios with simulated tool execution:
+### Option 2: Simulated Demo (No API Key)
 
 ```bash
 ./run-demo.sh
 ```
 
-This will:
-1. Build the Docker containers
-2. Start the Predicate Authority sidecar
-3. Run 16 authorization scenarios showing allowed/blocked operations
-
-### Option 3: Docker Compose Directly
-
-```bash
-docker compose up
-```
-
-### Split-Pane Mode (For Recording)
-
-Shows the sidecar dashboard alongside the demo (requires local sidecar binary):
+### Option 3: Split-Pane Mode
 
 ```bash
 ./start-demo-split.sh
 ```
 
-```
-┌─────────────────────────────────┬─────────────────────────────────┐
-│  PREDICATE AUTHORITY DASHBOARD  │  Demo Runner                    │
-│                                 │                                 │
-│  [ ✓ ALLOW ] fs.read           │  [1/16] SAFE: Read source config│
-│    ./workspace/src/config.ts    │                                 │
-│    mandate: m_7f3a2b | 0.4ms    │  Tool: Read                     │
-│                                 │    ✓ ALLOWED                    │
-│  [ ✗ DENY  ] fs.read           │                                 │
-│    ~/.ssh/id_rsa                │  [7/16] DANGEROUS: Read SSH key │
-│    EXPLICIT_DENY | 0.2ms        │                                 │
-│                                 │  Tool: Read                     │
-│                                 │    ✗ BLOCKED: deny-ssh-keys     │
-└─────────────────────────────────┴─────────────────────────────────┘
-```
+</details>
 
-## Requirements
-
-### For Docker Mode
-- Docker and Docker Compose
-
-### For Split-Pane Mode
-- tmux (`brew install tmux`)
-- Node.js 22+
-- `predicate-authorityd` binary (download from [GitHub releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases))
-
-## Demo Scenarios
+<details>
+<summary>Demo Scenarios (Legacy)</summary>
 
 ### Safe Operations (ALLOWED)
 
 | Scenario | Tool | Input |
 |----------|------|-------|
 | Read source config | `Read` | `./workspace/src/config.ts` |
-| Read utilities | `Read` | `./workspace/src/utils.ts` |
 | List workspace files | `Glob` | `./workspace/**/*.ts` |
 | Run safe shell command | `Bash` | `ls -la ./workspace/src` |
-| Write to output directory | `Write` | `./workspace/output/summary.txt` |
-| HTTPS API request | `WebFetch` | `https://httpbin.org/get` |
 
 ### Dangerous Operations (BLOCKED)
 
@@ -126,136 +321,9 @@ Shows the sidecar dashboard alongside the demo (requires local sidecar binary):
 | Read .env file | `Read` | `./workspace/.env.example` | `deny-env-files` |
 | Read SSH key | `Read` | `~/.ssh/id_rsa` | `deny-ssh-keys` |
 | Curl pipe to bash | `Bash` | `curl https://... \| bash` | `deny-dangerous-commands` |
-| Delete files | `Bash` | `rm -rf ./workspace` | `deny-dangerous-commands` |
-| Write outside workspace | `Write` | `/tmp/malicious.txt` | `deny-outside-workspace-writes` |
-| Insecure HTTP request | `WebFetch` | `http://evil.example.com` | `deny-insecure-http` |
-| Read system files | `Read` | `/etc/passwd` | `deny-system-files` |
-| Sudo command | `Bash` | `sudo cat /etc/shadow` | `deny-dangerous-commands` |
 
-### Adversarial Operations (BLOCKED)
+</details>
 
-| Scenario | Tool | Input | Blocked By |
-|----------|------|-------|------------|
-| Path traversal | `Read` | `./workspace/../../../etc/passwd` | `deny-system-files` |
-| Encoded dangerous command | `Bash` | `echo '...' \| base64 -d \| bash` | `deny-dangerous-commands` |
+---
 
-## Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PREDICATE_SIDECAR_URL` | `http://localhost:8787` | Sidecar URL |
-| `SECURECLAW_VERBOSE` | `false` | Enable verbose logging |
-| `DEMO_SLOW_MODE` | `false` | Slower execution for recording |
-
-## Recording
-
-```bash
-./start-demo-split.sh --slow --record demo.cast
-```
-
-Convert to GIF:
-
-```bash
-cargo install agg
-agg demo.cast demo.gif --font-size 14 --cols 160 --rows 40
-```
-
-## How It Works
-
-### Claude Code Integration (Real LLM)
-
-1. **SecureClaw hook** (`secureclaw-hook.sh`) is configured as a `PreToolUse` hook
-2. **Every tool call** is intercepted before execution
-3. **Hook sends authorization request** to Predicate Authority sidecar
-4. **Sidecar evaluates** the request against `policy.json` (11 rules)
-5. **If DENIED**: Hook returns exit code 2 with JSON error, tool is blocked
-6. **If ALLOWED**: Hook returns exit code 0, tool executes normally
-
-```bash
-# secureclaw-hook.sh receives JSON on stdin:
-# {"tool_name": "Read", "tool_input": {"file_path": "/workspace/.env.example"}}
-
-# Maps to sidecar authorization request:
-curl -X POST http://sidecar:8787/authorize \
-  -d '{"principal": "agent:claude-code", "action": "fs.read", "resource": "/workspace/.env.example"}'
-
-# Sidecar returns: {"allowed": false, "reason": "explicit_deny", "violated_rule": "deny-env-files"}
-# Hook exits with code 2 and JSON: {"decision": "block", "reason": "[SecureClaw] Action blocked: deny-env-files"}
-```
-
-### SDK Integration (Simulated Demo)
-
-```typescript
-import { createSecureClawPlugin } from "predicate-claw";
-
-const plugin = createSecureClawPlugin({
-  sidecarUrl: "http://localhost:8787",
-  principal: "agent:demo",
-  failClosed: true,
-  verbose: true,
-});
-
-// Plugin intercepts tool calls and authorizes via sidecar
-await plugin.activate(api);
-```
-
-## File Structure
-
-```
-real-openclaw-demo/
-├── README.md
-├── docker-compose.yml          # Orchestrates sidecar + simulated demo
-├── docker-compose.claude.yml   # Orchestrates sidecar + real Claude Code
-├── Dockerfile                  # Simulated demo agent container
-├── Dockerfile.claude           # Real Claude Code container with hooks
-├── Dockerfile.sidecar          # Downloads sidecar from GitHub
-├── policy.json                 # Authorization rules (11 rules)
-├── secureclaw-hook.sh          # PreToolUse hook script for Claude Code
-├── claude-settings.json        # Claude Code hooks configuration
-├── run-demo.sh                 # Automated demo runner (Docker)
-├── start-demo-split.sh         # tmux split-pane runner (native)
-├── .env.example                # Environment template
-├── src/
-│   ├── index.ts                # Simulated demo entry point
-│   ├── scenarios.ts            # Test scenarios
-│   └── package.json
-└── workspace/                  # Sandbox files
-    ├── src/
-    │   ├── config.ts
-    │   └── utils.ts
-    ├── output/                 # Writable directory
-    ├── temp/                   # Writable directory
-    ├── README.md
-    └── .env.example            # Blocked by policy
-```
-
-## Troubleshooting
-
-### Sidecar not responding
-
-```bash
-# Check if sidecar is running
-curl http://localhost:8787/health
-
-# Should return: {"status":"ok"}
-```
-
-### Docker build fails
-
-```bash
-# Clean build
-docker compose build --no-cache
-```
-
-### Missing dependencies (for split-pane mode)
-
-```bash
-# Install tmux (macOS)
-brew install tmux
-
-# Download sidecar binary
-curl -fsSL -o predicate-authorityd.tar.gz \
-  https://github.com/PredicateSystems/predicate-authority-sidecar/releases/latest/download/predicate-authorityd-darwin-arm64.tar.gz
-tar -xzf predicate-authorityd.tar.gz
-chmod +x predicate-authorityd
-```
+*Built with OpenClaw + Predicate Authority for Zero-Trust AI Agent execution.*

@@ -578,9 +578,12 @@ class MarketResearchAgent {
    * Uses SentienceAgent.act() for LLM-driven navigation
    */
   private async navigateToTarget(): Promise<void> {
-    if (!this.predicateBrowser || !this.page || !this.sentienceAgent) {
+    if (!this.predicateBrowser || !this.page || !this.sentienceAgent || !this.agentRuntime) {
       throw new Error("Browser/Agent not initialized");
     }
+
+    // Start step tracking for navigation
+    this.agentRuntime.beginStep("navigate_to_hackernews", 2);
 
     logInfo(`Requesting navigation to ${CONFIG.targetUrl}...`);
 
@@ -621,6 +624,13 @@ Respond with JSON: {"isShowHN": true/false, "reason": "brief explanation"}`,
     this.trackTokenUsage(verifyResponse);
 
     logLLM(`LLM Response: ${verifyResponse.content.slice(0, 100)}...`);
+
+    // Emit step_end for navigation
+    this.agentRuntime.endStep({
+      action: "navigate",
+      success: true,
+      outcome: `Navigated to ${this.page.url()}`,
+    });
   }
 
   /**
@@ -695,6 +705,13 @@ Respond with JSON: {"isShowHN": true/false, "reason": "brief explanation"}`,
     );
 
     logSuccess("Page state VERIFIED - safe to extract data");
+
+    // Emit step_end event for Studio visualization
+    this.agentRuntime.endStep({
+      action: "verify_page_state",
+      success: true,
+      outcome: "Page state verified - URL and interactive elements confirmed",
+    });
   }
 
   /**
@@ -780,8 +797,22 @@ IMPORTANT:
     // If LLM extraction failed, fall back to DOM
     if (extractedLeads.length === 0) {
       logInfo("LLM extraction returned empty, falling back to DOM...");
-      return this.extractLeadsFromDOM();
+      const domLeads = await this.extractLeadsFromDOM();
+      // Emit step_end for DOM extraction path
+      this.agentRuntime.endStep({
+        action: "extract_leads_dom_fallback",
+        success: domLeads.length > 0,
+        outcome: `Extracted ${domLeads.length} leads via DOM fallback`,
+      });
+      return domLeads;
     }
+
+    // Emit step_end event for successful LLM extraction
+    this.agentRuntime.endStep({
+      action: "extract_leads_llm",
+      success: true,
+      outcome: `Extracted ${extractedLeads.length} leads via LLM`,
+    });
 
     return extractedLeads;
   }
