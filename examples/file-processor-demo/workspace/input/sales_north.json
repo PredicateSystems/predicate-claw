@@ -1,0 +1,7 @@
+[
+  {"id": "N001", "region": "North", "product": "Widget A", "amount": 15200, "date": "2024-01-15", "customer": "Acme Corp"},
+  {"id": "N002", "region": "North", "product": "Widget B", "amount": 8900, "date": "2024-01-18", "customer": "TechStart Inc"},
+  {"id": "N003", "region": "North", "product": "Widget A", "amount": 12500, "date": "2024-01-22", "customer": "Global Systems"},
+  {"id": "N004", "region": "North", "product": "Widget C", "amount": 6300, "date": "2024-01-25", "customer": "DataFlow Ltd"},
+  {"id": "N005", "region": "North", "product": "Widget B", "amount": 9800, "date": "2024-01-28", "customer": "CloudNine"}
+]

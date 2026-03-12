@@ -1,0 +1,33 @@
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Workspace output (generated files)
+workspace/output/*
+workspace/archive/*
+!workspace/output/.gitkeep
+!workspace/archive/.gitkeep

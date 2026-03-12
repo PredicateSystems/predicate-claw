@@ -1,0 +1,260 @@
+# ============================================================================
+# Predicate Authority Policy - File Processor Agent
+# ============================================================================
+#
+# SCENARIO: Zero-Trust File Processing Pipeline
+#
+# This policy demonstrates the /v1/execute endpoint pattern where the sidecar
+# EXECUTES operations on behalf of the agent. The agent has zero ambient
+# filesystem privileges - all operations go through the sidecar.
+#
+# ARCHITECTURE:
+#   ┌─────────────┐      Execute Request     ┌─────────────────┐
+#   │   Agent     │ ─────────────────────────▶│ Sidecar         │
+#   │  (No FS     │  POST /v1/execute        │ /v1/execute     │
+#   │  Access)    │ ◀─────────────────────────│                 │
+#   └─────────────┘   Result + Evidence      │ 1. Validate     │
+#                                            │ 2. Execute      │
+#                                            │ 3. Return hash  │
+#                                            └────────┬────────┘
+#                                                     │
+#                                                     ▼
+#                                            ┌─────────────────┐
+#                                            │  Filesystem     │
+#                                            └─────────────────┘
+#
+# ACTIONS SUPPORTED BY /v1/execute:
+#   fs.read     - Read file contents
+#   fs.write    - Write file contents
+#   fs.list     - List directory entries
+#   fs.delete   - Delete files/directories
+#   cli.exec    - Execute shell commands
+#   http.fetch  - HTTP requests
+#   env.read    - Read environment variables
+#
+# ============================================================================
+
+version: "1.0"
+
+metadata:
+  scenario: "file-processor"
+  author: "security-team"
+  last_updated: "2024-03-10"
+  compliance: ["SOC2", "GDPR"]
+  default_posture: "deny"
+  execution_mode: "execute"  # Uses /v1/execute, not /authorize
+
+# ============================================================================
+# DENY RULES - Evaluated first (highest priority)
+# ============================================================================
+
+rules:
+
+  # --------------------------------------------------------------------------
+  # FILESYSTEM DENY RULES
+  # --------------------------------------------------------------------------
+
+  # Block access to system files
+  - name: deny-system-files
+    description: "Block access to sensitive system files"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read", "fs.write", "fs.list", "fs.delete"]
+    resources:
+      - "/etc/**"
+      - "/sys/**"
+      - "/proc/**"
+      - "/root/**"
+      - "/var/log/**"
+
+  # Block hidden files (dotfiles, secrets)
+  - name: deny-hidden-files
+    description: "Block access to hidden files which may contain secrets"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read", "fs.write", "fs.list", "fs.delete"]
+    resources:
+      - "**/.*"
+      - "**/.env"
+      - "**/.env.*"
+      - "**/.git/**"
+      - "**/.ssh/**"
+      - "**/.aws/**"
+
+  # Block credential files
+  - name: deny-credentials
+    description: "Block files commonly containing credentials"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read"]
+    resources:
+      - "**/credentials*"
+      - "**/secrets*"
+      - "**/password*"
+      - "**/*_rsa"
+      - "**/*_ed25519"
+
+  # --------------------------------------------------------------------------
+  # SHELL DENY RULES
+  # --------------------------------------------------------------------------
+
+  # Block dangerous shell commands
+  - name: deny-dangerous-commands
+    description: "Block shell commands that could compromise the system"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["cli.exec"]
+    resources:
+      - "*sudo*"
+      - "*rm -rf*"
+      - "*rm -r /*"
+      - "*chmod 777*"
+      - "*curl*|*bash*"
+      - "*wget*|*sh*"
+      - "*nc -e*"
+      - "*python*-c*import*socket*"
+
+# ============================================================================
+# ALLOW RULES - File Processor Agent Permissions
+# ============================================================================
+
+  # --------------------------------------------------------------------------
+  # INPUT DIRECTORY - Read Only
+  # --------------------------------------------------------------------------
+
+  - name: allow-input-read
+    description: "Allow reading and listing input directory"
+    effect: allow
+    principals: ["agent:file-processor"]
+    actions: ["fs.read", "fs.list"]
+    resources:
+      - "/workspace/input"
+      - "/workspace/input/*"
+      - "/workspace/input/**"
+
+  # --------------------------------------------------------------------------
+  # OUTPUT DIRECTORY - Write Only
+  # --------------------------------------------------------------------------
+
+  - name: allow-output-write
+    description: "Allow writing to output directory"
+    effect: allow
+    principals: ["agent:file-processor"]
+    actions: ["fs.write", "fs.list"]
+    resources:
+      - "/workspace/output"
+      - "/workspace/output/*"
+      - "/workspace/output/**"
+
+  # --------------------------------------------------------------------------
+  # ARCHIVE DIRECTORY - Write Only
+  # --------------------------------------------------------------------------
+
+  - name: allow-archive-write
+    description: "Allow archiving processed files"
+    effect: allow
+    principals: ["agent:file-processor"]
+    actions: ["fs.write", "fs.list"]
+    resources:
+      - "/workspace/archive"
+      - "/workspace/archive/*"
+      - "/workspace/archive/**"
+
+  # --------------------------------------------------------------------------
+  # DELETE - Only from input after archiving
+  # --------------------------------------------------------------------------
+
+  - name: allow-input-delete
+    description: "Allow deleting from input after archiving"
+    effect: allow
+    principals: ["agent:file-processor"]
+    actions: ["fs.delete"]
+    resources:
+      - "/workspace/input/*"
+
+  # --------------------------------------------------------------------------
+  # SHELL COMMANDS - Safe read-only operations
+  # --------------------------------------------------------------------------
+
+  - name: allow-safe-shell
+    description: "Allow minimal safe shell commands for reporting"
+    effect: allow
+    principals: ["agent:file-processor"]
+    actions: ["cli.exec"]
+    resources:
+      # File counting and stats
+      - "wc *"
+      - "wc -l *"
+      - "wc -w *"
+      # Directory listing
+      - "ls *"
+      - "ls -la *"
+      # Date/time
+      - "date"
+      - "date *"
+      # Reading output files
+      - "cat /workspace/output/*"
+      - "head /workspace/output/*"
+      - "tail /workspace/output/*"
+      # JSON processing (read-only)
+      - "jq * /workspace/output/*"
+
+  # --------------------------------------------------------------------------
+  # HTTP - Allowed endpoints for data enrichment
+  # --------------------------------------------------------------------------
+
+  - name: allow-http-apis
+    description: "Allow HTTP requests to approved APIs"
+    effect: allow
+    principals: ["agent:file-processor"]
+    actions: ["http.fetch"]
+    resources:
+      # Example: Allow currency conversion API
+      - "https://api.exchangerate.host/**"
+      # Example: Allow geocoding
+      - "https://nominatim.openstreetmap.org/**"
+      # Webhook for notifications
+      - "https://hooks.slack.com/services/**"
+
+  # --------------------------------------------------------------------------
+  # ENVIRONMENT - Safe variables only
+  # --------------------------------------------------------------------------
+
+  - name: allow-env-read
+    description: "Allow reading non-sensitive environment variables"
+    effect: allow
+    principals: ["agent:file-processor"]
+    actions: ["env.read"]
+    resources:
+      - "TZ"
+      - "LANG"
+      - "LC_*"
+      - "HOME"
+      - "USER"
+
+# ============================================================================
+# DEFAULT DENY - Catch-all (must be last)
+# ============================================================================
+
+  - name: default-deny-all
+    description: "DEFAULT DENY: Block any action not explicitly allowed"
+    effect: deny
+    principals: ["*"]
+    actions: ["*"]
+    resources: ["*"]
+
+# ============================================================================
+# AUDIT CONFIGURATION
+# ============================================================================
+
+audit:
+  log_level: "info"
+  log_denials: true
+  log_allows: true
+  log_executions: true  # Log actual execution results
+  include_evidence_hash: true
+  redact_patterns:
+    - "*password*"
+    - "*secret*"
+    - "*token*"
+    - "*api_key*"

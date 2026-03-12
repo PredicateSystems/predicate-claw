@@ -1,0 +1,8 @@
+[
+  {"id": "W001", "region": "West", "product": "Widget C", "amount": 18900, "date": "2024-01-10", "customer": "Pacific Tech"},
+  {"id": "W002", "region": "West", "product": "Widget A", "amount": 13200, "date": "2024-01-14", "customer": "Valley Ventures"},
+  {"id": "W003", "region": "West", "product": "Widget B", "amount": 9500, "date": "2024-01-19", "customer": "Mountain Systems"},
+  {"id": "W004", "region": "West", "product": "Widget C", "amount": 16800, "date": "2024-01-23", "customer": "Redwood Inc"},
+  {"id": "W005", "region": "West", "product": "Widget A", "amount": 7200, "date": "2024-01-27", "customer": "Sequoia Labs"},
+  {"id": "W006", "region": "West", "product": "Widget B", "amount": 11100, "date": "2024-01-30", "customer": "Sierra Solutions"}
+]
