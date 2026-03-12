@@ -1,0 +1,6 @@
+[
+  {"id": "S001", "region": "South", "product": "Widget B", "amount": 11200, "date": "2024-01-12", "customer": "SunTech"},
+  {"id": "S002", "region": "South", "product": "Widget A", "amount": 7800, "date": "2024-01-16", "customer": "Coastal Systems"},
+  {"id": "S003", "region": "South", "product": "Widget C", "amount": 14500, "date": "2024-01-20", "customer": "Harbor Inc"},
+  {"id": "S004", "region": "South", "product": "Widget A", "amount": 5600, "date": "2024-01-24", "customer": "Bay Networks"}
+]

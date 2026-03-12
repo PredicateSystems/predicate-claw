@@ -1,0 +1,38 @@
+# Predicate Authority Sidecar
+#
+# Uses Ubuntu 24.04 LTS which has GLIBC 2.39 (required by the sidecar binary).
+# Downloads the binary from GitHub releases - cached in Docker layers.
+
+FROM ubuntu:24.04
+
+# Install curl for downloading binary and health checks
+RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Detect architecture and download appropriate binary
+# This layer is cached after first build
+ARG TARGETARCH
+RUN ARCH=$(echo ${TARGETARCH:-$(uname -m)} | sed 's/amd64/x64/' | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/') && \
+    echo "Detected architecture: $ARCH" && \
+    curl -fsSL -o /tmp/sidecar.tar.gz \
+    "https://github.com/PredicateSystems/predicate-authority-sidecar/releases/download/v0.6.7/predicate-authorityd-linux-${ARCH}.tar.gz" && \
+    tar -xzf /tmp/sidecar.tar.gz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/predicate-authorityd && \
+    rm /tmp/sidecar.tar.gz
+
+# Copy policy file (at end for better caching)
+COPY policy.yaml /app/policy.yaml
+
+EXPOSE 8787
+
+# Run sidecar with delegation enabled for /v1/execute support
+# The --enable-delegation flag enables mandate issuance AND mandate store
+CMD ["predicate-authorityd", \
+     "--host", "0.0.0.0", \
+     "--port", "8787", \
+     "--mode", "local_only", \
+     "--policy-file", "/app/policy.yaml", \
+     "--log-level", "info", \
+     "--enable-delegation", \
+     "run"]

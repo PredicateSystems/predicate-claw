@@ -1,0 +1,24 @@
+{
+  "name": "file-processor-demo",
+  "version": "1.0.0",
+  "description": "Zero-trust file processing agent using /v1/execute endpoint",
+  "type": "module",
+  "main": "dist/file-processor-agent.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/file-processor-agent.js",
+    "dev": "tsx src/file-processor-agent.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
