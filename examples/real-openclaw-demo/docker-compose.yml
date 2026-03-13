@@ -3,6 +3,12 @@ version: "3.8"
 services:
   # Predicate Authority Sidecar - Authorization Engine (Rust-based)
   # Builds from Dockerfile.sidecar which downloads binary from GitHub releases
+  #
+  # Security Features (v0.7.1+):
+  #   --policy-reload-secret  : Require bearer token for /policy/reload endpoint
+  #   --disable-policy-reload : Disable /policy/reload entirely (returns 404)
+  #   --ssrf-allow            : Whitelist specific host:port for SSRF bypass
+  #
   sidecar:
     build:
       context: .
@@ -11,8 +17,12 @@ services:
       - "8787:8787"
     environment:
       LOCAL_IDP_SIGNING_KEY: "demo-secret-key-replace-in-production-minimum-32-chars"
+      # Security: Require bearer token for policy reload (v0.7.1+)
+      PREDICATE_POLICY_RELOAD_SECRET: "${PREDICATE_POLICY_RELOAD_SECRET:-demo-reload-secret}"
     volumes:
       - ./policy.json:/etc/predicate/policy.json:ro
+    # Note: Security features are configured via environment variables (v0.7.1+)
+    # PREDICATE_POLICY_RELOAD_SECRET enforces bearer token auth on /policy/reload
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8787/health || exit 1"]
       interval: 2s

@@ -2,6 +2,15 @@
 #
 # Uses Ubuntu 24.04 LTS which has GLIBC 2.39 (required by the sidecar binary).
 # Downloads the binary from GitHub releases - cached in Docker layers.
+#
+# CLI Options (v0.7.1+):
+#   --policy-reload-secret <SECRET>  : Require bearer token for /policy/reload
+#   --disable-policy-reload          : Disable /policy/reload endpoint (returns 404)
+#   --ssrf-allow <HOST:PORT>         : Whitelist host:port for SSRF bypass (repeatable)
+#
+# Environment Variables:
+#   PREDICATE_POLICY_RELOAD_SECRET   : Same as --policy-reload-secret
+#   LOCAL_IDP_SIGNING_KEY            : Key for local JWT signing
 
 FROM ubuntu:24.04
 

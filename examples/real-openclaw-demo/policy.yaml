@@ -47,6 +47,17 @@ metadata:
   default_posture: "deny"
 
 # ============================================================================
+# SSRF WHITELIST (v0.7.1+)
+# ============================================================================
+# Bypass SSRF protection for specific internal services.
+# Use sparingly - only for trusted internal endpoints that need direct access.
+#
+# ssrf_whitelist:
+#   - "internal-api:3000"
+#   - "metrics-service:9090"
+#   - "localhost:8080"
+
+# ============================================================================
 # DENY RULES - Explicit blocks (evaluated first, highest priority)
 # ============================================================================
 
