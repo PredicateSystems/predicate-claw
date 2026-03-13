@@ -26,6 +26,12 @@ services:
   # =========================================================================
   # Predicate Authority Sidecar - Run Time Assurance (RTA) Execution Proxy
   # =========================================================================
+  #
+  # Security Features (v0.7.1+):
+  #   --policy-reload-secret  : Require bearer token for /policy/reload endpoint
+  #   --disable-policy-reload : Disable /policy/reload entirely (returns 404)
+  #   --ssrf-allow            : Whitelist specific host:port for SSRF bypass
+  #
   predicate-sidecar:
     build:
       context: .
@@ -35,6 +41,8 @@ services:
     environment:
       # Demo signing key (replace in production)
       LOCAL_IDP_SIGNING_KEY: "demo-secret-key-replace-in-production-minimum-32-chars"
+      # Security: Require bearer token for policy reload (v0.7.1+)
+      PREDICATE_POLICY_RELOAD_SECRET: "${PREDICATE_POLICY_RELOAD_SECRET:-demo-reload-secret}"
     volumes:
       # Mount policy file (YAML or JSON supported)
       - ./policy.yaml:/app/policy.yaml:ro
@@ -47,6 +55,7 @@ services:
       --mode local_only
       --policy-file /app/policy.yaml
       --log-level info
+      --ssrf-allow predicate-sidecar:8000
       run
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
