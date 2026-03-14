@@ -1,0 +1,265 @@
+# ============================================================================
+# Predicate Authority Policy - Kiro Operator Agent
+# ============================================================================
+#
+# SCENARIO: Amazon "Kiro" Infrastructure Deletion Incident Reenactment
+#
+# This policy demonstrates how Predicate Authority prevents destructive
+# infrastructure operations. The kiro-operator agent has broad Terraform
+# permissions but is BLOCKED from executing destructive commands.
+#
+# KEY RULE: terraform destroy is DENIED regardless of credentials or intent.
+#
+# ============================================================================
+
+version: "1.0"
+
+metadata:
+  scenario: "kiro-reenactment"
+  author: "security-team"
+  last_updated: "2024-03-13"
+  compliance: ["SOC2", "NIST-800-53"]
+  default_posture: "deny"
+  execution_mode: "execute"
+
+# ============================================================================
+# DENY RULES - Critical Infrastructure Protection (Evaluated FIRST)
+# ============================================================================
+
+rules:
+
+  # --------------------------------------------------------------------------
+  # CRITICAL: Block Terraform Destroy Operations
+  # --------------------------------------------------------------------------
+  # This is the rule that prevents the Amazon Kiro incident.
+  # Even with admin credentials, even with "intent", the destroy is BLOCKED.
+
+  - name: deny-terraform-destroy
+    description: "CRITICAL: Block all terraform destroy operations"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["cli.exec"]
+    resources:
+      - "*terraform destroy*"
+      - "*terraform*destroy*"
+      - "*terraform apply -destroy*"
+      - "*terraform*-destroy*"
+
+  # --------------------------------------------------------------------------
+  # Block Other Destructive Terraform Commands
+  # --------------------------------------------------------------------------
+
+  - name: deny-terraform-force-unlock
+    description: "Block force unlock which can corrupt state"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["cli.exec"]
+    resources:
+      - "*terraform force-unlock*"
+      - "*terraform*force-unlock*"
+
+  - name: deny-terraform-taint
+    description: "Block taint operations without approval"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["cli.exec"]
+    resources:
+      - "*terraform taint*"
+      - "*terraform untaint*"
+
+  # --------------------------------------------------------------------------
+  # Block AWS Destructive Operations
+  # --------------------------------------------------------------------------
+
+  - name: deny-aws-delete-operations
+    description: "Block AWS CLI delete and terminate operations"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["cli.exec"]
+    resources:
+      - "*aws*delete*"
+      - "*aws*terminate*"
+      - "*aws*destroy*"
+      - "*aws ec2 terminate-instances*"
+      - "*aws rds delete-db*"
+      - "*aws s3 rb*"
+      - "*aws s3 rm*--recursive*"
+
+  # --------------------------------------------------------------------------
+  # Block Credential Access
+  # --------------------------------------------------------------------------
+
+  - name: deny-credential-files
+    description: "Block access to AWS and cloud credentials"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read", "fs.write", "fs.list", "fs.delete"]
+    resources:
+      - "**/.aws/**"
+      - "**/.aws/credentials"
+      - "**/.aws/config"
+      - "**/credentials*"
+      - "**/secrets*"
+      - "**/.env"
+      - "**/.env.*"
+
+  # --------------------------------------------------------------------------
+  # Block System Files
+  # --------------------------------------------------------------------------
+
+  - name: deny-system-files
+    description: "Block access to sensitive system files"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["fs.read", "fs.write", "fs.list", "fs.delete"]
+    resources:
+      - "/etc/**"
+      - "/sys/**"
+      - "/proc/**"
+      - "/root/**"
+
+  # --------------------------------------------------------------------------
+  # Block Shell Injection Patterns
+  # --------------------------------------------------------------------------
+
+  - name: deny-dangerous-shell
+    description: "Block dangerous shell patterns"
+    effect: deny
+    principals: ["agent:*"]
+    actions: ["cli.exec"]
+    resources:
+      - "*sudo*"
+      - "*rm -rf*"
+      - "*rm -r /*"
+      - "*chmod 777*"
+      - "*curl*|*bash*"
+      - "*wget*|*sh*"
+      - "*nc -e*"
+
+# ============================================================================
+# ALLOW RULES - Kiro Operator Agent Permissions
+# ============================================================================
+
+  # --------------------------------------------------------------------------
+  # Terraform READ Operations (Safe)
+  # --------------------------------------------------------------------------
+
+  - name: allow-terraform-read
+    description: "Allow read-only Terraform operations"
+    effect: allow
+    principals: ["agent:kiro-operator"]
+    actions: ["cli.exec"]
+    resources:
+      - "terraform init*"
+      - "terraform validate*"
+      - "terraform fmt*"
+      - "terraform plan*"
+      - "terraform show*"
+      - "terraform state list*"
+      - "terraform state show*"
+      - "terraform output*"
+      - "terraform version*"
+      - "terraform providers*"
+
+  # --------------------------------------------------------------------------
+  # Terraform Apply (Requires Review - Would Need Approval In Production)
+  # --------------------------------------------------------------------------
+
+  - name: allow-terraform-apply
+    description: "Allow terraform apply (non-destructive)"
+    effect: allow
+    principals: ["agent:kiro-operator"]
+    actions: ["cli.exec"]
+    resources:
+      - "terraform apply*"
+    # Note: In production, this would require human approval
+    # The -auto-approve flag is dangerous and should be reviewed
+
+  # --------------------------------------------------------------------------
+  # Terraform Directory Access
+  # --------------------------------------------------------------------------
+
+  - name: allow-terraform-files
+    description: "Allow reading Terraform configuration files"
+    effect: allow
+    principals: ["agent:kiro-operator"]
+    actions: ["fs.read", "fs.list"]
+    resources:
+      - "/workspace/terraform"
+      - "/workspace/terraform/**"
+      - "/workspace/terraform/*.tf"
+      - "/workspace/terraform/*.tfstate"
+      - "/workspace/terraform/*.tfstate.*"
+
+  - name: allow-terraform-write
+    description: "Allow writing to Terraform directory"
+    effect: allow
+    principals: ["agent:kiro-operator"]
+    actions: ["fs.write"]
+    resources:
+      - "/workspace/terraform/*.tf"
+      - "/workspace/terraform/*.tfvars"
+
+  # --------------------------------------------------------------------------
+  # AWS READ Operations (Safe)
+  # --------------------------------------------------------------------------
+
+  - name: allow-aws-read
+    description: "Allow read-only AWS CLI operations"
+    effect: allow
+    principals: ["agent:kiro-operator"]
+    actions: ["cli.exec"]
+    resources:
+      - "aws sts get-caller-identity*"
+      - "aws ec2 describe-*"
+      - "aws s3 ls*"
+      - "aws rds describe-*"
+      - "aws iam list-*"
+      - "aws iam get-*"
+
+  # --------------------------------------------------------------------------
+  # Safe Shell Commands
+  # --------------------------------------------------------------------------
+
+  - name: allow-safe-shell
+    description: "Allow minimal safe shell commands"
+    effect: allow
+    principals: ["agent:kiro-operator"]
+    actions: ["cli.exec"]
+    resources:
+      - "ls *"
+      - "cat *"
+      - "head *"
+      - "tail *"
+      - "grep *"
+      - "wc *"
+      - "date*"
+      - "echo *"
+
+# ============================================================================
+# DEFAULT DENY - Catch-all (must be last)
+# ============================================================================
+
+  - name: default-deny-all
+    description: "DEFAULT DENY: Block any action not explicitly allowed"
+    effect: deny
+    principals: ["*"]
+    actions: ["*"]
+    resources: ["*"]
+
+# ============================================================================
+# AUDIT CONFIGURATION
+# ============================================================================
+
+audit:
+  log_level: "info"
+  log_denials: true
+  log_allows: true
+  log_executions: true
+  include_evidence_hash: true
+  redact_patterns:
+    - "*password*"
+    - "*secret*"
+    - "*token*"
+    - "*api_key*"
+    - "*AWS_SECRET*"

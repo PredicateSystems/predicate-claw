@@ -1,0 +1,24 @@
+{
+  "name": "kiro-reenactment-demo",
+  "version": "1.0.0",
+  "description": "Amazon Kiro infrastructure deletion incident reenactment using Predicate Authority",
+  "type": "module",
+  "main": "dist/kiro_reenactment.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/kiro_reenactment.js",
+    "dev": "tsx src/kiro_reenactment.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

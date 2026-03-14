@@ -1,0 +1,84 @@
+# ============================================================================
+# Kiro Reenactment Demo - Docker Compose
+# ============================================================================
+#
+# Demonstrates the Amazon "Kiro" infrastructure deletion incident and how
+# Predicate Authority prevents it.
+#
+# Components:
+#   1. predicate-sidecar: Rust sidecar that intercepts destructive commands
+#   2. kiro-operator-agent: TypeScript agent that simulates the incident
+#
+# The agent attempts to execute `terraform destroy -auto-approve` which is
+# BLOCKED by the Predicate Authority policy.
+#
+# ============================================================================
+
+version: "3.8"
+
+services:
+  # ==========================================================================
+  # Predicate Authority Sidecar
+  # Downloads binary from GitHub releases via Dockerfile.sidecar
+  # ==========================================================================
+  predicate-sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile.sidecar
+    container_name: predicate-sidecar
+    ports:
+      - "8787:8787"
+    volumes:
+      # Terraform workspace - sidecar has access
+      - ./terraform:/workspace/terraform
+    environment:
+      - RUST_LOG=info
+      # Signing key for mandate issuance (required for /v1/execute)
+      - LOCAL_IDP_SIGNING_KEY=demo-secret-key-replace-in-production-minimum-32-chars
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8787/health || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+    networks:
+      - predicate-net
+
+  # ==========================================================================
+  # Kiro Operator Agent
+  # ==========================================================================
+  kiro-operator-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kiro-operator-agent
+    depends_on:
+      predicate-sidecar:
+        condition: service_healthy
+    environment:
+      - PREDICATE_SIDECAR_URL=http://predicate-sidecar:8787
+      - SECURECLAW_PRINCIPAL=agent:kiro-operator
+      # Slow mode for GIF recording (1=normal, 2=2x slower, 3=3x slower)
+      - SLOW_MODE=${SLOW_MODE:-1}
+      # LLM Provider selection (auto-detects if not set)
+      - LLM_PROVIDER=${LLM_PROVIDER:-}
+      # Anthropic Claude
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      # Local LLM (Ollama/LM Studio)
+      - LOCAL_LLM_BASE_URL=${LOCAL_LLM_BASE_URL:-}
+      - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-llama3.2}
+      - NODE_ENV=production
+    # NOTE: No volume mounts for /workspace - agent cannot access filesystem directly
+    # All operations go through sidecar's /v1/execute endpoint
+    networks:
+      - predicate-net
+    # Force pseudo-TTY for color output
+    tty: true
+
+networks:
+  predicate-net:
+    driver: bridge
