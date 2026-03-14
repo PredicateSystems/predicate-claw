@@ -47,7 +47,9 @@ npm install predicate-claw
 
 **Right pane:** The integration demo using the real `createSecureClawPlugin()` SDK—legitimate file reads succeed, while sensitive file access, dangerous shell commands, and prompt injection attacks are blocked before execution.
 
-### Zero-Trust AI Agent Playground
+<details>
+<summary><strong>Zero-Trust AI Agent Playground</strong> - Complete Agent Loop with Pre/Post Verification</summary>
+
 #### Complete Agent Loop: Pre-execution authorization + Post-execution deterministic verification
 
 ![Zero-Trust Agent Demo](docs/images/openclaw_complete_loop_demo_s.gif)
@@ -78,6 +80,42 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 See [Zero-Trust Agent Demo](examples/real-openclaw-demo/README.md) for full instructions.
+
+</details>
+
+### Preventing the Amazon "Kiro" Incident
+
+**What happens when an AI agent with admin credentials decides to run `terraform destroy`?**
+
+![Kiro Reenactment Demo](examples/kiro-reenactment-demo/kiro-demo.gif)
+
+This demo reenacts the infamous Amazon infrastructure deletion incident where an AI coding assistant, facing a corrupted Terraform state, followed "standard operating procedure" to delete and recreate the environment—attempting to destroy production infrastructure.
+
+**Predicate Authority intercepts the destructive command at the OS-level:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  AGENT: "terraform destroy -auto-approve"                          │
+│                                                                     │
+│  ╔═══════════════════════════════════════════════════════════════╗  │
+│  ║  PREDICATE AUTHORITY                                          ║  │
+│  ║  ACTION: cli.exec terraform destroy                           ║  │
+│  ║  STATUS: ████ UNAUTHORIZED ████                               ║  │
+│  ║  INTERCEPTED at OS-level gateway [<1ms p99]                   ║  │
+│  ║                                                               ║  │
+│  ║  🛡️  ENVIRONMENT DELETION PREVENTED  🛡️                       ║  │
+│  ╚═══════════════════════════════════════════════════════════════╝  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+The agent had AWS admin credentials. It had "intent" to help. It was following SOPs. **None of that matters.** The policy said no.
+
+```bash
+cd examples/kiro-reenactment-demo
+./run-demo.sh
+```
+
+See [Kiro Reenactment Demo](examples/kiro-reenactment-demo/README.md) for details.
 
 ### Token-Saving Snapshot Skill
 

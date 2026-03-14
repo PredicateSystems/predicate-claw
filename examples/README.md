@@ -164,6 +164,10 @@ console.log(evidence.state_hash); // sha256:...
 
 ## Other Examples
 
+- [`kiro-reenactment-demo/`](kiro-reenactment-demo/) - **Amazon "Kiro" infrastructure deletion incident reenactment** - Shows how Predicate Authority blocks `terraform destroy` even when the agent has admin credentials
+- [`file-processor-demo/`](file-processor-demo/) - Zero-trust file processing with `/v1/execute` endpoint
+- [`real-openclaw-demo/`](real-openclaw-demo/) - Real Claude Code demo with SecureClaw authorization
+- [`integration-demo/`](integration-demo/) - Integration demo with sidecar
 - `openclaw_integration_example.py` - Python integration example
 - `runtime_registry_example.py` - Runtime registration example
 - `openclaw-plugin-smoke/` - OpenClaw plugin smoke test
